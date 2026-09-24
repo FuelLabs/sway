@@ -114,6 +114,49 @@ pub(crate) struct AllocatedAbstractOp {
     pub(crate) owning_span: Option<Span>,
 }
 
+impl AllocatedAbstractOp {
+    /// Largest size this op can take in concrete Fuel instructions (units of 4 bytes).
+    ///
+    /// See [`Op::worst_case_instruction_size`] for the virtual-op counterpart.
+    pub(crate) fn worst_case_instruction_size(&self) -> u64 {
+        use ControlFlowOp::*;
+        match &self.opcode {
+            Either::Right(Label(_)) => 0,
+
+            // Loads from data section may take up to 2 instructions.
+            Either::Left(
+                AllocatedInstruction::LoadDataId(_, _) | AllocatedInstruction::AddrDataId(_, _),
+            ) => 2,
+
+            // Another special case for the blob opcode, used for testing.
+            Either::Left(AllocatedInstruction::BLOB(ref count)) => count.value() as u64,
+
+            // This is a concrete op, size is fixed.
+            Either::Left(_) => 1,
+
+            // Worst case for jump is 2 opcodes, and 3 for calls.
+            Either::Right(Jump { ty, .. }) => match ty {
+                JumpType::Unconditional => 2,
+                JumpType::NotZero(_) => 2,
+                JumpType::Call => 3,
+            },
+            Either::Right(JumpToAddr(..)) => 1,
+            Either::Right(ReturnFromCall { .. }) => 1,
+            Either::Right(Comment) => 0,
+            Either::Right(DataSectionOffsetPlaceholder) => {
+                // If the placeholder is 32 bits, this is 1. If 64, this should be 2. We use LW
+                // to load the data, which loads a whole word, so for now this is 2.
+                2
+            }
+            Either::Right(ConfigurablesOffsetPlaceholder) => 2,
+            Either::Right(PushAll(_)) | Either::Right(PopAll(_)) => unreachable!(
+                "`PushAll` and `PopAll` don't belong in control flow ops \
+                        since they're not about control flow"
+            ),
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub(crate) struct RealizedOp {
     pub(crate) opcode: AllocatedInstruction,
@@ -125,6 +168,26 @@ pub(crate) struct RealizedOp {
 }
 
 impl Op {
+    /// Largest size this op can take in concrete Fuel instructions (units of 4 bytes).
+    pub(crate) fn worst_case_instruction_size(&self) -> u64 {
+        match &self.opcode {
+            Either::Right(ControlFlowOp::Label(_)) => 0,
+            Either::Right(ControlFlowOp::Comment) => 0,
+            Either::Right(ControlFlowOp::Jump { ty, .. }) => match ty {
+                JumpType::Call => 3,
+                _ => 2,
+            },
+            Either::Right(ControlFlowOp::JumpToAddr(_)) => 1,
+            Either::Right(ControlFlowOp::ReturnFromCall { .. }) => 1,
+            Either::Right(ControlFlowOp::DataSectionOffsetPlaceholder) => 2,
+            Either::Right(ControlFlowOp::ConfigurablesOffsetPlaceholder) => 2,
+            Either::Right(ControlFlowOp::PushAll(_)) | Either::Right(ControlFlowOp::PopAll(_)) => 2,
+            Either::Left(VirtualOp::BLOB(ref count)) => count.value() as u64,
+            Either::Left(VirtualOp::LoadDataId(_, _) | VirtualOp::AddrDataId(_, _)) => 2,
+            Either::Left(_) => 1,
+        }
+    }
+
     /// Moves the stack pointer by the given amount (i.e. allocates stack memory)
     pub(crate) fn unowned_stack_allocate_memory(
         size_to_allocate_in_bytes: VirtualImmediate24,
@@ -245,7 +308,7 @@ impl Op {
         Op {
             opcode: Either::Right(OrganizationalOp::Jump {
                 to: label,
-                type_: JumpType::Unconditional,
+                ty: JumpType::Unconditional,
             }),
             comment: String::new(),
             owning_span: None,
@@ -256,7 +319,7 @@ impl Op {
         Op {
             opcode: Either::Right(OrganizationalOp::Jump {
                 to: label,
-                type_: JumpType::Unconditional,
+                ty: JumpType::Unconditional,
             }),
             comment: comment.into(),
             owning_span: None,
@@ -268,7 +331,7 @@ impl Op {
         Op {
             opcode: Either::Right(OrganizationalOp::Jump {
                 to: label,
-                type_: JumpType::NotZero(reg0),
+                ty: JumpType::NotZero(reg0),
             }),
             comment: String::new(),
             owning_span: None,
@@ -284,7 +347,7 @@ impl Op {
         Op {
             opcode: Either::Right(OrganizationalOp::Jump {
                 to: label,
-                type_: JumpType::NotZero(reg0),
+                ty: JumpType::NotZero(reg0),
             }),
             comment: comment.into(),
             owning_span: None,
@@ -1320,7 +1383,7 @@ pub(crate) enum ControlFlowOp<Reg> {
         /// Target label
         to: Label,
         /// Jump type
-        type_: JumpType<Reg>,
+        ty: JumpType<Reg>,
     },
     // Placeholder for the offset into the configurables section.
     ConfigurablesOffsetPlaceholder,
@@ -1349,7 +1412,7 @@ impl<Reg: fmt::Display> fmt::Display for ControlFlowOp<Reg> {
             "{}",
             match self {
                 Label(lab) => format!("{lab}"),
-                Jump { to, type_, .. } => match type_ {
+                Jump { to, ty, .. } => match ty {
                     JumpType::Unconditional => format!("ji  {to}"),
                     JumpType::NotZero(cond) => format!("jnzi {cond} {to}"),
                     JumpType::Call => format!("fncall {to}"),
@@ -1378,7 +1441,7 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
             | ConfigurablesOffsetPlaceholder
             | PushAll(_)
             | PopAll(_) => vec![],
-            Jump { type_, .. } => match type_ {
+            Jump { ty, .. } => match ty {
                 JumpType::Unconditional => vec![],
                 JumpType::NotZero(r1) => vec![r1],
                 JumpType::Call => vec![],
@@ -1400,7 +1463,7 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
             | ConfigurablesOffsetPlaceholder
             | PushAll(_)
             | PopAll(_) => vec![],
-            Jump { type_, .. } => match type_ {
+            Jump { ty, .. } => match ty {
                 JumpType::Unconditional => vec![],
                 JumpType::NotZero(r1) => vec![r1],
                 JumpType::Call => vec![],
@@ -1423,7 +1486,7 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
             | ConfigurablesOffsetPlaceholder
             | PushAll(_)
             | PopAll(_) => vec![],
-            Jump { type_, .. } => match type_ {
+            Jump { ty, .. } => match ty {
                 JumpType::Unconditional => vec![],
                 JumpType::NotZero(r1) => vec![r1],
                 JumpType::Call => vec![],
@@ -1452,10 +1515,10 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
             | ConfigurablesOffsetPlaceholder
             | PushAll(_)
             | PopAll(_) => self.clone(),
-            Jump { to, type_ } => match type_ {
+            Jump { to, ty } => match ty {
                 JumpType::NotZero(r1) => Self::Jump {
                     to: *to,
-                    type_: JumpType::NotZero(update_reg(r1)),
+                    ty: JumpType::NotZero(update_reg(r1)),
                 },
                 _ => self.clone(),
             },
@@ -1492,7 +1555,7 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
                     next_ops.push(index + 1);
                 }
             }
-            Jump { to, type_, .. } => match type_ {
+            Jump { to, ty, .. } => match ty {
                 JumpType::Unconditional => {
                     next_ops.push(label_to_index[to]);
                 }
@@ -1557,9 +1620,9 @@ impl ControlFlowOp<VirtualRegister> {
         match self {
             Label(label) => Label(*label),
             Comment => Comment,
-            Jump { to, type_ } => Jump {
+            Jump { to, ty } => Jump {
                 to: *to,
-                type_: match type_ {
+                ty: match ty {
                     JumpType::NotZero(r1) => JumpType::NotZero(map_reg(r1)),
                     JumpType::Unconditional => JumpType::Unconditional,
                     JumpType::Call => JumpType::Call,

@@ -188,7 +188,7 @@ impl FuelAsmBuilder<'_, '_> {
         self.cur_bytecode.push(Op {
             opcode: Either::Right(OrganizationalOp::Jump {
                 to: fn_label,
-                type_: JumpType::Call,
+                ty: JumpType::Call,
             }),
             comment: format!("[call: {fn_name}]: call function"),
             owning_span: None,
