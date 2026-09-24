@@ -490,8 +490,9 @@ impl DataSection {
     /// the configurables region (see [Self::freeze_configurables_base_offset]), because
     /// their actual offset can still decrease while jumps are being realized. Since the
     /// actual offset can never exceed the worst-case one, a near decision always stays
-    /// realizable, and the far form is realizable for any offset. For all other entries
-    /// the actual offset is already final and is used directly.
+    /// realizable. The far form (`MOVI` + `ADD`) additionally requires the actual offset
+    /// to fit in Imm18; larger offsets fail at bytecode emission with
+    /// [`sway_error::error::CompileError::Immediate18TooLarge`].
     ///
     /// This decision must be perfectly stable: it defines the size of the instruction,
     /// and all the sizes must remain exactly the same from the moment the jump labels

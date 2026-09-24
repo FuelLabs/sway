@@ -24,6 +24,8 @@ use crate::{
 use std::{
     collections::{BTreeMap, BTreeSet, HashSet},
     fmt,
+    ops::Deref,
+    sync::Arc,
 };
 
 use super::ast_elements::type_parameter::ConstGenericExpr;
@@ -270,6 +272,14 @@ impl TypeId {
     /// Returns the index that identifies the type.
     pub fn index(&self) -> usize {
         self.0
+    }
+
+    pub(crate) fn get_valid_type_info(&self, engines: &Engines) -> Option<(TypeId, Arc<TypeInfo>)> {
+        let t = engines.te().get(*self);
+        match t.deref() {
+            TypeInfo::ErrorRecovery(_) => None,
+            _ => Some((*self, t)),
+        }
     }
 
     pub(crate) fn get_type_parameters(self, engines: &Engines) -> Option<Vec<TypeParameter>> {
