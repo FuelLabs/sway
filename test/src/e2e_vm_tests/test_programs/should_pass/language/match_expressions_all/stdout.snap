@@ -99,7 +99,7 @@ move $r0 $$arg0               ; [fn init: return_match_on_str_slice_8]: copy arg
 move $r1 $$reta               ; [fn init: return_match_on_str_slice_8]: save return address
 addi $r2 $$locbase i96        ; get offset to local __ptr slice
 mcpi $r2 $$arg0 i16           ; copy memory
-addr $r3 data_non_configurable_7; get __const_global's address in data section
+addr $r3 data_NonConfigurable_7; get __const_global's address in data section
 sw   $$locbase $r3 i0         ; store word
 movi $r3 i5                   ; initialize constant into register
 sw   $$locbase $r3 i1         ; store word
@@ -110,7 +110,7 @@ move $$arg1 $r3               ; [call: eq_9]: pass argument 1
 jal  $$reta $pc i33           ; [call: eq_9]: call function
 movi $r0 i1                   ; move parameter from branch to block argument
 jnzf $$retv $zero i25
-addr $r0 data_non_configurable_9; get __const_global0's address in data section
+addr $r0 data_NonConfigurable_9; get __const_global0's address in data section
 addi $r3 $$locbase i32        ; get offset to local __ptr { ptr, u64 }
 sw   $$locbase $r0 i4         ; store word
 movi $r0 i7                   ; initialize constant into register
@@ -122,7 +122,7 @@ move $$arg1 $r0               ; [call: eq_9]: pass argument 1
 jal  $$reta $pc i21           ; [call: eq_9]: call function
 movi $r0 i2                   ; move parameter from branch to block argument
 jnzf $$retv $zero i13
-addr $r0 data_non_configurable_10; get __const_global1's address in data section
+addr $r0 data_NonConfigurable_10; get __const_global1's address in data section
 addi $r3 $$locbase i64        ; get offset to local __ptr { ptr, u64 }
 sw   $$locbase $r0 i8         ; store word
 movi $r0 i5                   ; initialize constant into register

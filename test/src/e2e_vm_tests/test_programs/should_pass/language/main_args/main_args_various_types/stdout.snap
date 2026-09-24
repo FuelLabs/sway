@@ -1279,11 +1279,11 @@ addi $r1 $$locbase i712       ; get offset to local __ptr slice
 mcpi $r1 $r0 i16              ; copy memory
 addi $r0 $$locbase i328       ; get offset to local __ptr slice
 mcpi $r0 $r1 i16              ; copy memory
-load $r0 data_non_configurable_0; load constant from data section
+load $r0 data_NonConfigurable_0; load constant from data section
 lw   $r1 $$locbase i41        ; load slice pointer for logging data
 lw   $r2 $$locbase i42        ; load slice size for logging data
 logd $zero $r0 $r1 $r2        ; log slice
-addr $r0 data_non_configurable_1; get __const_global's address in data section
+addr $r0 data_NonConfigurable_1; get __const_global's address in data section
 addi $r1 $$locbase i112       ; get offset to local __ptr { ptr, u64 }
 sw   $$locbase $r0 i14        ; store word
 movi $r0 i3                   ; initialize constant into register
@@ -1318,7 +1318,7 @@ eq   $r0 $r0 $r1
 eq   $r0 $r0 $zero
 jnzf $r0 $zero i43
 addi $r0 $r6 i24              ; add array element offset to array base
-addr $r1 data_non_configurable_2; get __const_global0's address in data section
+addr $r1 data_NonConfigurable_2; get __const_global0's address in data section
 addi $r2 $$locbase i272       ; get offset to local __ptr { ptr, u64 }
 sw   $$locbase $r1 i34        ; store word
 movi $r1 i3                   ; initialize constant into register
@@ -1356,13 +1356,13 @@ addi $r0 $$locbase i488       ; get offset to local __ptr { u64 }
 sw   $$locbase $one i61       ; store word
 mcpi $r4 $r0 i8               ; copy memory
 jmpf $zero i119
-load $r0 data_non_configurable_3; load constant from data section
+load $r0 data_NonConfigurable_3; load constant from data section
 rvrt $r0
-load $r0 data_non_configurable_3; load constant from data section
+load $r0 data_NonConfigurable_3; load constant from data section
 rvrt $r0
-load $r0 data_non_configurable_3; load constant from data section
+load $r0 data_NonConfigurable_3; load constant from data section
 rvrt $r0
-load $r0 data_non_configurable_3; load constant from data section
+load $r0 data_NonConfigurable_3; load constant from data section
 rvrt $r0
 muli $r0 $r11 i24             ; get offset to array element
 add  $r0 $r13 $r0             ; add array element offset to array base
@@ -1423,7 +1423,7 @@ jnzf $r1 $zero i27
 lw   $r1 $r2 i0               ; load word
 eq   $r1 $r1 $one
 jnzf $r1 $zero i2
-load $r0 data_non_configurable_4; load constant from data section
+load $r0 data_NonConfigurable_4; load constant from data section
 rvrt $r0
 lw   $r1 $r2 i1               ; load word
 addi $r2 $$locbase i592       ; get offset to local __ptr { { ptr, u64, u64 } }
@@ -1515,11 +1515,11 @@ cfsi i144                     ; [fn end: abi_encode_51] free: locals 144 byte(s)
 poph i266176                  ; [fn end: abi_encode_51]: restore used high registers 40..64
 jal  $zero $$reta i0          ; [fn end: abi_encode_51] return from call
 .data:
-data_non_configurable_0 .word 3647243719605075626
-data_non_configurable_1 .bytes[3] 73 65 74  set
-data_non_configurable_2 .bytes[3] 61 64 64  add
-data_non_configurable_3 .word 18446744073709486084
-data_non_configurable_4 .word 14757395258967588866
+data_NonConfigurable_0 .word 3647243719605075626
+data_NonConfigurable_1 .bytes[3] 73 65 74  set
+data_NonConfigurable_2 .bytes[3] 61 64 64  add
+data_NonConfigurable_3 .word 18446744073709486084
+data_NonConfigurable_4 .word 14757395258967588866
 
 
 ;; --- START OF TARGET BYTECODE ---
@@ -1630,7 +1630,6 @@ data_non_configurable_4 .word 14757395258967588866
 0x000001a4 PSHH 0x40fff                                    ;; [150, 4, 15, 255]
 0x000001a8 MOVE R58 $sp                                    ;; [26, 232, 80, 0]
 0x000001ac CFEI 0x520                                      ;; [145, 0, 5, 32]
-=======
 0x000001b0 MOVE R47 R56                                    ;; [26, 191, 128, 0]
 0x000001b4 MOVE R48 R61                                    ;; [26, 195, 208, 0]
 0x000001b8 ADDI R45 R58 0x470                              ;; [80, 183, 164, 112]
