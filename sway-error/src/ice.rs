@@ -22,7 +22,7 @@ impl<T> OkOrIceInternal for Option<T> {
         msg: &'static str,
         span: Span,
     ) -> Result<Self::Output, CompileError> {
-        self.ok_or_else(|| CompileError::Internal(msg, span))
+        self.ok_or(CompileError::Internal(msg, span))
     }
 }
 

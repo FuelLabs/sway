@@ -109,7 +109,8 @@ impl AsmBuilder for FuelAsmBuilder<'_, '_> {
                     None,
                 );
                 let dataid = self.data_section.insert_data_value(entry);
-                self.trivial_configurable_to_data_id.insert(name.clone(), dataid);
+                self.trivial_configurable_to_data_id
+                    .insert(name.clone(), dataid);
             }
             ConfigContent::V1 {
                 name,
@@ -177,9 +178,9 @@ impl AsmBuilder for FuelAsmBuilder<'_, '_> {
                     // A v1 configurable without a decode fn is trivial,
                     // so no writable global and no decode call.
                     // get_config resolves this name via AddrDataId from `$ds`.
-                    self.trivial_configurable_to_data_id.insert(name.clone(), dataid);
+                    self.trivial_configurable_to_data_id
+                        .insert(name.clone(), dataid);
                 }
-
             }
         }
     }
