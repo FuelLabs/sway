@@ -47,11 +47,6 @@ pub(crate) struct AbstractProgram {
     non_entries: Vec<AbstractInstructionSet>,
     reg_seqr: RegisterSequencer,
     experimental: ExperimentalFeatures,
-    /// Whether the program uses a trivially-addressable configurable, and therefore
-    /// needs the configurable-section register (`$cs`) to be initialized in the
-    /// prologue. When this is `false` the two `$cs` initialization instructions are
-    /// omitted, shrinking the prelude by 8 bytes (see `prelude_size_in_bytes`).
-    needs_configurable_register: bool,
 }
 
 impl AbstractProgram {
@@ -65,7 +60,6 @@ impl AbstractProgram {
         non_entries: Vec<AbstractInstructionSet>,
         reg_seqr: RegisterSequencer,
         experimental: ExperimentalFeatures,
-        needs_configurable_register: bool,
     ) -> Self {
         AbstractProgram {
             kind,
@@ -76,7 +70,6 @@ impl AbstractProgram {
             non_entries,
             reg_seqr,
             experimental,
-            needs_configurable_register,
         }
     }
 
@@ -196,10 +189,7 @@ impl AbstractProgram {
     ///     -    CONFIGURABLES_OFFSET (32-64)
     ///     4    LW $ds $scratch 1
     ///     -    ADD $ds $ds $scratch
-    ///     5    LW $cs $scratch 2          (only if `needs_configurable_register`)
-    ///     -    ADD $cs $cs $scratch        (only if `needs_configurable_register`)
-    ///          (later rewritten to `ADDI $cs $ds imm` when Imm12-stable)
-    ///     6    .program_start:
+    ///     5    .program_start:
     fn build_prologue(&mut self) -> AllocatedAbstractInstructionSet {
         const _: () = assert!(
             crate::PRELUDE_CONFIGURABLES_OFFSET_IN_BYTES == 16,
@@ -210,15 +200,11 @@ impl AbstractProgram {
             "Inconsistency in the assumption of prelude organisation"
         );
         const _: () = assert!(
-            crate::PRELUDE_SIZE_IN_BYTES_WITHOUT_CONFIGURABLES == 32,
-            "Inconsistency in the assumption of prelude organisation"
-        );
-        const _: () = assert!(
-            crate::PRELUDE_CONFIGURABLE_REGISTER_INIT_SIZE_IN_BYTES == 8,
+            crate::PRELUDE_SIZE_IN_BYTES == 32,
             "Inconsistency in the assumption of prelude organisation"
         );
         let label = self.reg_seqr.get_label();
-        let mut ops = vec![
+        let ops = vec![
             AllocatedAbstractOp {
                 opcode: Either::Left(AllocatedInstruction::MOVE(
                     AllocatedRegister::Constant(ConstantRegister::Scratch),
@@ -274,32 +260,6 @@ impl AbstractProgram {
                 owning_span: None,
             },
         ];
-
-        // words 5 / 5.5 -- initialize the configurable-section register `$cs`.
-        // Emitted only when the program actually uses a trivially-addressable
-        // configurable; otherwise the prelude is 8 bytes smaller.
-        if self.needs_configurable_register {
-            // word 5 -- load the configurables offset into $cs
-            ops.push(AllocatedAbstractOp {
-                opcode: Either::Left(AllocatedInstruction::LW(
-                    AllocatedRegister::Constant(ConstantRegister::ConfigurableSectionStart),
-                    AllocatedRegister::Constant(ConstantRegister::Scratch),
-                    VirtualImmediate12::new(2),
-                )),
-                comment: "".into(),
-                owning_span: None,
-            });
-            // word 5.5 -- add $is to make it absolute
-            ops.push(AllocatedAbstractOp {
-                opcode: Either::Left(AllocatedInstruction::ADD(
-                    AllocatedRegister::Constant(ConstantRegister::ConfigurableSectionStart),
-                    AllocatedRegister::Constant(ConstantRegister::ConfigurableSectionStart),
-                    AllocatedRegister::Constant(ConstantRegister::Scratch),
-                )),
-                comment: "".into(),
-                owning_span: None,
-            });
-        }
 
         AllocatedAbstractInstructionSet {
             function: None,

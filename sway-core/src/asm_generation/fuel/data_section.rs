@@ -335,23 +335,6 @@ impl DataSection {
         self.absolute_idx_to_offset(idx)
     }
 
-    /// Given a configurable [DataId], calculate the offset _from the beginning of the
-    /// configurable section_ to the data in bytes. This excludes the non-configurables
-    /// prefix and is meant to be used together with `CONFIGURABLE_SECTION_REGISTER`
-    /// (`$cs`), which points at the start of the configurable section.
-    pub(crate) fn configurable_offset_within_section(&self, id: &DataId) -> usize {
-        debug_assert!(matches!(id.region, DataSectionRegion::Configurables));
-        // `id.idx` indexes into `configurables`; sum the (word-aligned) sizes of the
-        // entries that precede it.
-        self.configurables
-            .iter()
-            .take(id.idx as usize)
-            .fold(0, |offset, entry| {
-                // entries must be word aligned
-                size_bytes_round_up_to_word_alignment!(offset + entry.to_bytes().len())
-            })
-    }
-
     /// Given an absolute index, calculate the offset _from the beginning of the data section_ to the data
     /// in bytes.
     pub(crate) fn absolute_idx_to_offset(&self, idx: usize) -> usize {
@@ -497,19 +480,6 @@ impl DataSection {
             self.absolute_idx_to_offset(self.non_configurables.len() + self.pointers.len()) as u64;
         self.frozen_configurables_base_offset =
             Some(configurables_start + worst_case_late_insertions_in_bytes);
-    }
-
-    /// The worst-case configurables-region base offset frozen by
-    /// [Self::freeze_configurables_base_offset], if any.
-    pub(crate) fn frozen_configurables_base_offset(&self) -> Option<u64> {
-        self.frozen_configurables_base_offset
-    }
-
-    /// Byte offset of the configurables region from the start of the data section,
-    /// using the *current* (non-pessimistic) layout. After far-jump target words have
-    /// been inserted this is the final `$cs - $ds` delta.
-    pub(crate) fn configurables_region_byte_offset(&self) -> u64 {
-        self.absolute_idx_to_offset(self.non_configurables.len() + self.pointers.len()) as u64
     }
 
     /// Returns true if the `AddrDataId` instruction for the given [DataId] must be realized

@@ -92,7 +92,7 @@ fn return_match_on_str_slice_8(mut param: __ptr slice) -> u64 {
 
 
 
-pshh i265984                  ; [fn init: return_match_on_str_slice_8]: push used high registers 40..64
+pshh i531968                  ; [fn init: return_match_on_str_slice_8]: push used high registers 40..64
 move $$locbase $sp            ; [fn init: return_match_on_str_slice_8]: set locals base register
 cfei i112                     ; [fn init: return_match_on_str_slice_8]: allocate: locals 112 byte(s), call args 0 slot(s)
 move $r0 $$arg0               ; [fn init: return_match_on_str_slice_8]: copy argument 0 (param)
@@ -138,5 +138,5 @@ movi $r0 i1000                ; move parameter from branch to block argument
 move $$retv $r0               ; [fn end: return_match_on_str_slice_8] set return value
 cfsi i112                     ; [fn end: return_match_on_str_slice_8] free: locals 112 byte(s), call args 0 slot(s)
 move $$reta $r1               ; [fn end: return_match_on_str_slice_8] restore return address
-poph i265984                  ; [fn end: return_match_on_str_slice_8]: restore used high registers 40..64
+poph i531968                  ; [fn end: return_match_on_str_slice_8]: restore used high registers 40..64
 jal  $zero $$reta i0          ; [fn end: return_match_on_str_slice_8] return from call

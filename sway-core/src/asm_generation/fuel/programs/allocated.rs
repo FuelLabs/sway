@@ -4,7 +4,6 @@ use crate::{
     asm_generation::{
         fuel::{
             allocated_abstract_instruction_set::AllocatedAbstractInstructionSet,
-            compiler_constants::TWELVE_BITS,
             data_section::DataSection,
         },
         ProgramKind,
@@ -28,7 +27,7 @@ pub(crate) struct AllocatedProgram {
 impl AllocatedProgram {
     pub(crate) fn into_final_program(mut self) -> Result<FinalProgram, crate::CompileError> {
         // Concat the prologue and all the functions together.
-        let mut abstract_ops = AllocatedAbstractInstructionSet {
+        let abstract_ops = AllocatedAbstractInstructionSet {
             function: None,
             ops: std::iter::once(self.prologue.ops)
                 .chain(self.functions.into_iter().map(|f| f.ops))
@@ -65,33 +64,12 @@ impl AllocatedProgram {
             .count();
         self.data_section.reserve_pointer_slots(num_non_copy_loads);
 
-        let (mut far_jump_sizes, worst_case_far_jump_words) = abstract_ops.collect_far_jumps();
+        let (far_jump_sizes, worst_case_far_jump_words) = abstract_ops.collect_far_jumps();
         self.data_section
             .freeze_configurables_base_offset(8 * worst_case_far_jump_words);
 
-        // When the (worst-case) configurables base fits in Imm12, replace the
-        // prologue `LW $cs`/`ADD $cs` pair with `ADDI $cs, $ds, imm`. Shrinking
-        // the instruction stream can change far-jump distances, so recollect.
-        let frozen_base = self
-            .data_section
-            .frozen_configurables_base_offset()
-            .expect("configurables base offset just frozen");
-        let rewritten_cs_init =
-            frozen_base <= TWELVE_BITS && abstract_ops.try_rewrite_cs_init_to_addi();
-        if rewritten_cs_init {
-            let (new_sizes, _) = abstract_ops.collect_far_jumps();
-            far_jump_sizes = new_sizes;
-        }
-
-        let (mut realized_ops, mut label_offsets) =
+        let (realized_ops, mut label_offsets) =
             abstract_ops.lower_to_realized_ops(&mut self.data_section, &far_jump_sizes)?;
-
-        // Fill in the final `$cs = $ds + offset` immediate now that far-jump
-        // pointer insertions (if any) have landed in the data section.
-        if rewritten_cs_init {
-            realized_ops
-                .patch_cs_addi_immediate(self.data_section.configurables_region_byte_offset());
-        }
 
         let ops = realized_ops.lower_to_allocated_ops();
 

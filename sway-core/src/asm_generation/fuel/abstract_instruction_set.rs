@@ -57,31 +57,6 @@ pub struct RealizedAbstractInstructionSet {
 }
 
 impl RealizedAbstractInstructionSet {
-    /// Patch the prologue `ADDI $cs, $ds, imm` (emitted by
-    /// [`AllocatedAbstractInstructionSet::try_rewrite_cs_init_to_addi`]) with the
-    /// final configurables-region byte offset. Must run after far-jump realization
-    /// has finished inserting pointer words into the data section.
-    pub(crate) fn patch_cs_addi_immediate(&mut self, configurables_offset_from_ds: u64) {
-        use crate::asm_lang::{
-            allocated_ops::{AllocatedInstruction, AllocatedRegister},
-            ConstantRegister, VirtualImmediate12,
-        };
-
-        let cs = AllocatedRegister::Constant(ConstantRegister::ConfigurableSectionStart);
-        let ds = AllocatedRegister::Constant(ConstantRegister::DataSectionStart);
-        let imm = VirtualImmediate12::new(configurables_offset_from_ds);
-
-        for op in &mut self.ops {
-            if let AllocatedInstruction::ADDI(dst, src, _) = &op.opcode {
-                if *dst == cs && *src == ds {
-                    op.opcode = AllocatedInstruction::ADDI(cs, ds, imm.clone());
-                    op.comment = "initialize $cs from $ds".into();
-                    return;
-                }
-            }
-        }
-    }
-
     pub(crate) fn lower_to_allocated_ops(self) -> Vec<AllocatedOp> {
         self.ops
             .into_iter()
