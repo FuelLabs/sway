@@ -8,7 +8,7 @@ ANOTHER_U8 is trivially decodable, so we should not see any initialization.
 
 When accessing TUPLE_BOOL_U64 we should see an offset from $ssp
 
-When accessing ANOTHER_U8, IR shows get_config; asm loads from $cs (offset 0)
+When accessing ANOTHER_U8, IR shows get_config; asm loads from $ds via AddrDataId
 
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/configurable_consts --release --ir final --asm final | sub TUPLE_BOOL_U64,ANOTHER_U8
 
@@ -19,7 +19,7 @@ Matches for "TUPLE_BOOL_U64"
 addr $$arg0 data_Configurable_10; get pointer to configurable TUPLE_BOOL_U64 default value
 addi $$arg1 $zero i9          ; get length of configurable TUPLE_BOOL_U64 default value
 addi $$arg2 $ssp i108         ; get pointer to configurable TUPLE_BOOL_U64 stack address
-jal  $$reta $pc i542          ; decode configurable TUPLE_BOOL_U64
+jal  $$reta $pc i543          ; decode configurable TUPLE_BOOL_U64
 addi $r0 $ssp i108            ; get address of configurable TUPLE_BOOL_U64
 data_<Configurable, TUPLE_BOOL_U64>_19 .bytes[9] 01 00 00 00 00 00 00 00 0b  .........
 43 |     TUPLE_BOOL_U64: (bool, u64) = (true, 11),
@@ -28,4 +28,5 @@ Matches for "ANOTHER_U8"
 
     ANOTHER_U8 = config u8, <none>, 0x03, !1
         v1186v1 = get_config __ptr u8, ANOTHER_U8, !361
+addr $r0 data_Configurable_0  ; get address of configurable ANOTHER_U8
 data_<Configurable, ANOTHER_U8>_9 .bytes[1] 03  .
