@@ -1,0 +1,6 @@
+category = "fail"
+
+# check-count: 4
+# check: $()The type "&u64" is not allowed in storage.
+
+# check: $()6 errors.
