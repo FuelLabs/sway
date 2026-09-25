@@ -238,6 +238,10 @@ jobs:
           cargo uninstall forc-mcp || true
           rm -f "${CARGO_HOME:-$HOME/.cargo}/bin/forc-mcp"
           for dir in ./forc-plugins/*/; do
+                # Dev-only plugins are not installed for docs / release tooling.
+                case "$(basename "$dir")" in
+                  forc-ir-inspect) continue ;;
+                esac
                 cargo install --locked --path "$dir"
           done
           cargo install --locked --debug --git https://github.com/FuelLabs/forc forc-crypto
