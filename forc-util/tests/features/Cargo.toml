@@ -1,0 +1,23 @@
+[package]
+name = "forc-util-feature-tests"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+# Keep other workspace consumers from enabling forc-util's default features.
+[workspace]
+
+[features]
+default = ["defaults"]
+defaults = ["forc-util/default", "dep:clap"]
+bytecode = ["forc-util/bytecode"]
+cli = ["forc-util/cli", "dep:clap"]
+diagnostics = ["forc-util/diagnostics"]
+fs-locking = ["forc-util/fs-locking"]
+restricted = ["forc-util/restricted"]
+tx = ["forc-util/tx"]
+
+[dependencies]
+anyhow = "1.0"
+clap = { version = "4.5", features = ["derive"], optional = true }
+forc-util = { path = "../..", default-features = false }
