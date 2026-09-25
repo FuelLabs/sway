@@ -1,0 +1,17 @@
+category = "fail"
+
+# immutable variable
+# check: $()Point { x: 1, y: 2 }.mutate(x);
+# nextln: $()Cannot pass immutable argument to mutable parameter.
+
+# struct field access
+# check: $()Point { x: 1, y: 2 }.mutate(p.x);
+# nextln: $()Cannot pass immutable argument to mutable parameter.
+
+# tuple element access
+# check: $()Point { x: 1, y: 2 }.mutate(t.0);
+# nextln: $()Cannot pass immutable argument to mutable parameter.
+
+# constant
+# check: $()Point { x: 1, y: 2 }.mutate(MY_CONST);
+# nextln: $()Cannot pass immutable argument to mutable parameter.
