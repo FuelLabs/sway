@@ -319,7 +319,7 @@ impl Op {
         Op {
             opcode: Either::Right(OrganizationalOp::Jump {
                 to: label,
-                type_: JumpType::Call,
+                ty: JumpType::Call,
             }),
             comment: String::new(),
             owning_span: None,
