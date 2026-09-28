@@ -301,7 +301,7 @@ impl SubstTypes for TyTraitDecl {
                     TyTraitInterfaceItem::TraitFn(item_ref) => {
                         if let Some(new_item_ref) = item_ref
                             .clone()
-                            .subst_types_and_insert_new_with_parent(ctx) {
+                            .subst_types_and_insert_new(ctx) {
                             item_ref.replace_id(*new_item_ref.id());
                             HasChanges::Yes
                         } else {
@@ -311,7 +311,7 @@ impl SubstTypes for TyTraitDecl {
                     TyTraitInterfaceItem::Constant(decl_ref) => {
                         if let Some(new_decl_ref) = decl_ref
                             .clone()
-                            .subst_types_and_insert_new(ctx) {
+                            .subst_types_and_insert_new_if_not_concrete(ctx) {
                             decl_ref.replace_id(*new_decl_ref.id());
                             HasChanges::Yes
                         } else{
@@ -321,7 +321,7 @@ impl SubstTypes for TyTraitDecl {
                     TyTraitInterfaceItem::Type(decl_ref) => {
                         if let Some(new_decl_ref) = decl_ref
                             .clone()
-                            .subst_types_and_insert_new(ctx) {
+                            .subst_types_and_insert_new_if_not_concrete(ctx) {
                             decl_ref.replace_id(*new_decl_ref.id());
                             HasChanges::Yes
                         } else{
@@ -333,7 +333,7 @@ impl SubstTypes for TyTraitDecl {
                 TyTraitItem::Fn(item_ref) => {
                     if let Some(new_item_ref) = item_ref
                         .clone()
-                        .subst_types_and_insert_new_with_parent(ctx)
+                        .subst_types_and_insert_new(ctx)
                     {
                         item_ref.replace_id(*new_item_ref.id());
                         HasChanges::Yes
@@ -344,7 +344,7 @@ impl SubstTypes for TyTraitDecl {
                 TyTraitItem::Constant(item_ref) => {
                     if let Some(new_decl_ref) = item_ref
                         .clone()
-                        .subst_types_and_insert_new_with_parent(ctx)
+                        .subst_types_and_insert_new(ctx)
                     {
                         item_ref.replace_id(*new_decl_ref.id());
                         HasChanges::Yes
@@ -355,7 +355,7 @@ impl SubstTypes for TyTraitDecl {
                 TyTraitItem::Type(item_ref) => {
                     if let Some(new_decl_ref) = item_ref
                         .clone()
-                        .subst_types_and_insert_new_with_parent(ctx)
+                        .subst_types_and_insert_new(ctx)
                     {
                         item_ref.replace_id(*new_decl_ref.id());
                         HasChanges::Yes

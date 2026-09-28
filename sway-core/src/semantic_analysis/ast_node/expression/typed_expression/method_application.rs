@@ -1055,9 +1055,7 @@ pub(crate) fn monomorphize_method(
     //       from avoid re-inserts.
     //       For details see: https://github.com/FuelLabs/sway/issues/7658
     let decl_ref = if has_changes.has_changes() {
-        decl_engine
-            .insert_modified(func_decl, *decl_ref.id())
-            .with_parent(decl_engine, (*decl_ref.id()).into())
+        decl_engine.insert_modified(func_decl, *decl_ref.id())
     } else {
         decl_ref
     };

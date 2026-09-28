@@ -11,7 +11,7 @@ use sway_error::error::CompileError;
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::Named;
 
-use crate::decl_engine::{AssociatedItemDeclId, DeclId, DeclUniqueId};
+use crate::decl_engine::{DeclId, DeclUniqueId, FunctionalDeclId};
 use crate::engine_threading::DebugWithEngines;
 use crate::language::ty::{self, TyFunctionDecl, TyTraitItem};
 use crate::Engines;
@@ -99,10 +99,8 @@ impl TypeCheckAnalysisContext<'_> {
             .find_all_parents(self.engines, fn_decl_id)
             .into_iter()
             .filter_map(|f| match f {
-                AssociatedItemDeclId::TraitFn(_) => None,
-                AssociatedItemDeclId::Function(fn_id) => Some(fn_id),
-                AssociatedItemDeclId::Constant(_) => None,
-                AssociatedItemDeclId::Type(_) => None,
+                FunctionalDeclId::TraitFn(_) => None,
+                FunctionalDeclId::Function(fn_id) => Some(fn_id),
             })
             .collect::<Vec<_>>();
         let id = if !parents.is_empty() {
@@ -169,10 +167,8 @@ impl TypeCheckAnalysisContext<'_> {
             .find_all_parents(self.engines, fn_decl_id)
             .into_iter()
             .filter_map(|f| match f {
-                AssociatedItemDeclId::TraitFn(_) => None,
-                AssociatedItemDeclId::Function(fn_id) => Some(fn_id),
-                AssociatedItemDeclId::Constant(_) => None,
-                AssociatedItemDeclId::Type(_) => None,
+                FunctionalDeclId::TraitFn(_) => None,
+                FunctionalDeclId::Function(fn_id) => Some(fn_id),
             })
             .collect::<Vec<_>>();
 
@@ -309,10 +305,8 @@ impl TypeCheckAnalysisContext<'_> {
             .find_all_parents(self.engines, fn_decl_id)
             .into_iter()
             .filter_map(|f| match f {
-                AssociatedItemDeclId::TraitFn(_) => None,
-                AssociatedItemDeclId::Function(fn_id) => Some(fn_id),
-                AssociatedItemDeclId::Constant(_) => None,
-                AssociatedItemDeclId::Type(_) => None,
+                FunctionalDeclId::TraitFn(_) => None,
+                FunctionalDeclId::Function(fn_id) => Some(fn_id),
             })
             .collect::<Vec<_>>();
 
