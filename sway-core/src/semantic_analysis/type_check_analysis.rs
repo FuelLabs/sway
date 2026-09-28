@@ -11,7 +11,7 @@ use sway_error::error::CompileError;
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::Named;
 
-use crate::decl_engine::{FunctionalDeclId, DeclId, DeclUniqueId};
+use crate::decl_engine::{DeclId, DeclUniqueId, FunctionalDeclId};
 use crate::engine_threading::DebugWithEngines;
 use crate::language::ty::{self, TyFunctionDecl, TyTraitItem};
 use crate::Engines;
