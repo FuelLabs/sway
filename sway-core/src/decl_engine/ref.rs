@@ -100,13 +100,7 @@ where
     T: Named + Spanned + IsConcrete + SubstTypes + Clone + TyDeclParsedType,
 {
     pub(crate) fn subst_types_and_insert_new(&self, ctx: &SubstTypesContext) -> Option<Self> {
-        let decl_engine = ctx.engines.de();
-        let mut decl = (*decl_engine.get(&self.id)).clone();
-        if decl.subst(ctx).has_changes() {
-            Some(decl_engine.insert_modified(decl, self.id))
-        } else {
-            None
-        }
+        self.id.subst_types_and_insert_new(ctx)
     }
 
     /// Same as [Self::subst_types_and_insert_new], but performs the substitution
@@ -116,18 +110,7 @@ where
         &self,
         ctx: &SubstTypesContext,
     ) -> Option<Self> {
-        let decl_engine = ctx.engines.de();
-        if ctx
-            .type_subst_map
-            .is_some_and(|tsm| tsm.source_ids_contains_concrete_type(ctx.engines))
-            || !decl_engine
-                .get(&self.id)
-                .is_concrete(ctx.handler, ctx.engines)
-        {
-            self.subst_types_and_insert_new(ctx)
-        } else {
-            None
-        }
+        self.id.subst_types_and_insert_new_if_not_concrete(ctx)
     }
 }
 
