@@ -1,0 +1,9 @@
+[project]
+authors = ["Fuel Labs <contact@fuel.sh>"]
+entry = "main.sw"
+license = "Apache-2.0"
+name = "call"
+
+[dependencies]
+contract_interface = { path = "../contract_interface" }
+std = { path = "../../../../../../../sway-lib-std" }
