@@ -1008,9 +1008,7 @@ impl TraitMap {
                         ))
                         .has_changes()
                     {
-                        decl_engine
-                            .insert_modified(decl, *decl_ref.id())
-                            .with_parent(decl_engine, decl_ref.id().into())
+                        decl_engine.insert_modified(decl, *decl_ref.id())
                     } else {
                         decl_ref.clone()
                     };

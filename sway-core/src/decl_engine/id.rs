@@ -257,7 +257,7 @@ impl SubstTypes for DeclId<TyConstantDecl> {
 impl<T> DeclId<T>
 where
     DeclEngine: DeclEngineIndex<T> + DeclEngineInsert<T> + DeclEngineGetParsedDeclId<T>,
-    T: Named + Spanned + SubstTypes + Clone + TyDeclParsedType,
+    T: Named + Spanned + IsConcrete + SubstTypes + Clone + TyDeclParsedType,
 {
     pub(crate) fn subst_types_and_insert_new(
         &self,
@@ -267,6 +267,25 @@ where
         let mut decl = (*decl_engine.get(self)).clone();
         if decl.subst(ctx).has_changes() {
             Some(decl_engine.insert_modified(decl, *self))
+        } else {
+            None
+        }
+    }
+
+    /// Same as [Self::subst_types_and_insert_new], but performs the substitution
+    /// only if the declaration is not concrete, or if the type substitution map
+    /// contains concrete source types.
+    pub(crate) fn subst_types_and_insert_new_if_not_concrete(
+        &self,
+        ctx: &SubstTypesContext,
+    ) -> Option<DeclRef<Self>> {
+        let decl_engine = ctx.engines.de();
+        if ctx
+            .type_subst_map
+            .is_some_and(|tsm| tsm.source_ids_contains_concrete_type(ctx.engines))
+            || !decl_engine.get(self).is_concrete(ctx.handler, ctx.engines)
+        {
+            self.subst_types_and_insert_new(ctx)
         } else {
             None
         }

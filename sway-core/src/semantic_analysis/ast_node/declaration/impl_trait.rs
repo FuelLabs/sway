@@ -981,11 +981,19 @@ fn type_check_trait_implementation(
                 // interface method _implementations_, we need to refer to the
                 // original [decl_id]s of the non-monomorphized trait
                 // declaration.
+                //
+                // An interface method can have at most one parent: the interface
+                // method of the original trait declaration. Trait declarations
+                // are always monomorphized starting from the original declaration
+                // coming from the namespace, so an interface method is always at
+                // most one substitution away from the original one. (Parents of
+                // trait interface methods are registered only in the
+                // `TyTraitDecl::subst`.)
                 let interface_item_parents = decl_engine.find_all_parents(engines, decl_ref.id());
                 match interface_item_parents.len() {
                     0 => { interface_item_refs.insert((name, implementing_for), item.clone()); },
                     1 => match interface_item_parents[0] {
-                            AssociatedItemDeclId::TraitFn(parent_decl_id) => {
+                            FunctionalDeclId::TraitFn(parent_decl_id) => {
                                 let parent_interface_item =
                                     TyTraitInterfaceItem::TraitFn(DeclRef::new(name.clone(), parent_decl_id, decl_ref.span()));
                                 interface_item_refs.insert((name, implementing_for), parent_interface_item);
@@ -1294,9 +1302,7 @@ fn type_check_trait_implementation(
                 ));
 
                 let decl_ref = if has_changes.has_changes() {
-                    decl_engine
-                        .insert_modified(method, *decl_ref.id())
-                        .with_parent(decl_engine, (*decl_ref.id()).into())
+                    decl_engine.insert_modified(method, *decl_ref.id())
                 } else {
                     decl_ref.clone()
                 };

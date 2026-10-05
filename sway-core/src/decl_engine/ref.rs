@@ -47,7 +47,7 @@ pub type DeclRefAbi = DeclRef<DeclId<TyAbiDecl>>;
 pub type DeclRefConstant = DeclRef<DeclId<TyConstantDecl>>;
 pub type DeclRefEnum = DeclRef<DeclId<TyEnumDecl>>;
 
-pub type DeclRefMixedFunctional = DeclRef<AssociatedItemDeclId>;
+pub type DeclRefMixedFunctional = DeclRef<FunctionalDeclId>;
 pub type DeclRefMixedInterface = DeclRef<InterfaceDeclId>;
 
 /// Represents the use of / syntactic reference to a declaration. A
@@ -100,62 +100,17 @@ where
     T: Named + Spanned + IsConcrete + SubstTypes + Clone + TyDeclParsedType,
 {
     pub(crate) fn subst_types_and_insert_new(&self, ctx: &SubstTypesContext) -> Option<Self> {
-        let decl_engine = ctx.engines.de();
-        if ctx
-            .type_subst_map
-            .is_some_and(|tsm| tsm.source_ids_contains_concrete_type(ctx.engines))
-            || !decl_engine
-                .get(&self.id)
-                .is_concrete(ctx.handler, ctx.engines)
-        {
-            let mut decl = (*decl_engine.get(&self.id)).clone();
-            if decl.subst(ctx).has_changes() {
-                Some(decl_engine.insert_modified(decl, self.id))
-            } else {
-                None
-            }
-        } else {
-            None
-        }
+        self.id.subst_types_and_insert_new(ctx)
     }
-}
 
-impl<T> DeclRef<DeclId<T>>
-where
-    AssociatedItemDeclId: From<DeclId<T>>,
-{
-    pub(crate) fn with_parent(
-        self,
-        decl_engine: &DeclEngine,
-        parent: AssociatedItemDeclId,
-    ) -> Self {
-        let id: DeclId<T> = self.id;
-        decl_engine.register_parent(id.into(), parent);
-        self
-    }
-}
-
-impl<T> DeclRef<DeclId<T>>
-where
-    AssociatedItemDeclId: From<DeclId<T>>,
-    DeclEngine: DeclEngineIndex<T> + DeclEngineInsert<T> + DeclEngineGetParsedDeclId<T>,
-    T: Named + Spanned + IsConcrete + SubstTypes + Clone + TyDeclParsedType,
-{
-    pub(crate) fn subst_types_and_insert_new_with_parent(
+    /// Same as [Self::subst_types_and_insert_new], but performs the substitution
+    /// only if the declaration is not concrete, or if the type substitution map
+    /// contains concrete source types.
+    pub(crate) fn subst_types_and_insert_new_if_not_concrete(
         &self,
         ctx: &SubstTypesContext,
     ) -> Option<Self> {
-        let decl_engine = ctx.engines.de();
-        let mut decl = (*decl_engine.get(&self.id)).clone();
-        if decl.subst(ctx).has_changes() {
-            Some(
-                decl_engine
-                    .insert_modified(decl, self.id)
-                    .with_parent(decl_engine, self.id.into()),
-            )
-        } else {
-            None
-        }
+        self.id.subst_types_and_insert_new_if_not_concrete(ctx)
     }
 }
 
@@ -295,7 +250,7 @@ impl ReplaceDecls for DeclRefFunction {
             ctx.self_type(),
         )? {
             return Ok(
-                if let AssociatedItemDeclId::Function(new_decl_ref) = new_decl_ref {
+                if let FunctionalDeclId::Function(new_decl_ref) = new_decl_ref {
                     self.id = new_decl_ref;
                     HasChanges::Yes
                 } else {
@@ -313,7 +268,7 @@ impl ReplaceDecls for DeclRefFunction {
                 ctx.self_type(),
             )? {
                 return Ok(
-                    if let AssociatedItemDeclId::Function(new_decl_ref) = new_decl_ref {
+                    if let FunctionalDeclId::Function(new_decl_ref) = new_decl_ref {
                         self.id = new_decl_ref;
                         HasChanges::Yes
                     } else {
