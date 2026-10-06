@@ -1,4 +1,5 @@
 category = "fail"
+experimental = { new_encoding = false }
 
-#check: $()owner: u64 = INITIAL_OWNER,
+#check: $()SECOND: u64 = FIRST + 1,
 #nextln: $()Configurable values can be changed after compilation, so they cannot be used in constant expressions.

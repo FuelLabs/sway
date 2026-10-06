@@ -1,4 +1,4 @@
 category = "fail"
 
-#check: $()owner: u64 = INITIAL_OWNER,
+#check: $()let value = { __add(FIRST, 1) };
 #nextln: $()Configurable values can be changed after compilation, so they cannot be used in constant expressions.

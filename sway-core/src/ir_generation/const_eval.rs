@@ -37,6 +37,9 @@ use sway_utils::mapped_stack::MappedStack;
 #[derive(Debug)]
 enum ConstEvalError {
     CompileError,
+    ConfigurableInConstExpression {
+        span: Span,
+    },
     CannotBeEvaluatedToConst {
         // This is not used at the moment because we do not give detailed description of why a
         // const eval failed.
@@ -257,6 +260,9 @@ pub(crate) fn compile_constant_expression_to_constant(
         let mut known_consts = MappedStack::<Ident, Constant>::new();
         match const_eval_typed_expr(lookup, &mut known_consts, const_expr) {
             Ok(Some(constant)) => Ok(constant),
+            Err(ConstEvalError::ConfigurableInConstExpression { span }) => {
+                Err(CompileError::ConfigurableInConstExpression { span })
+            }
             Ok(None) => err,
             Err(_) => err,
         }
@@ -617,13 +623,17 @@ fn const_eval_typed_expr(
             match known_consts.get(name) {
                 Some(constant) => Some(*constant),
                 None => (lookup.lookup)(lookup, call_path, &Some(*decl.clone()))
-                    .ok()
-                    .flatten()
+                    .or_else(|err| match err {
+                        CompileError::ConfigurableInConstExpression { span } => {
+                            Err(ConstEvalError::ConfigurableInConstExpression { span })
+                        }
+                        _ => Ok(None),
+                    })?
                     .and_then(|v| v.get_constant(lookup.context).cloned()),
             }
         }
         ty::TyExpressionVariant::ConfigurableExpression { span, .. } => {
-            return Err(ConstEvalError::CannotBeEvaluatedToConst { span: span.clone() });
+            return Err(ConstEvalError::ConfigurableInConstExpression { span: span.clone() });
         }
         ty::TyExpressionVariant::VariableExpression {
             name, call_path, ..
@@ -880,7 +890,7 @@ fn const_eval_typed_expr(
             }
         },
         ty::TyExpressionVariant::ImplicitReturn(e) => {
-            if let Ok(Some(constant)) = const_eval_typed_expr(lookup, known_consts, e) {
+            if let Some(constant) = const_eval_typed_expr(lookup, known_consts, e)? {
                 Some(constant)
             } else {
                 return Err(ConstEvalError::CannotBeEvaluatedToConst {
@@ -1172,54 +1182,50 @@ fn const_eval_codeblock(
     for ast_node in &codeblock.contents {
         result = match &ast_node.content {
             ty::TyAstNodeContent::Declaration(decl @ ty::TyDecl::VariableDecl(var_decl)) => {
-                if let Ok(Some(rhs)) = const_eval_typed_expr(lookup, known_consts, &var_decl.body) {
-                    known_consts.push(var_decl.name.clone(), rhs);
-                    bindings.push(var_decl.name.clone());
-                    Ok(None)
-                } else {
-                    Err(ConstEvalError::CannotBeEvaluatedToConst {
+                match const_eval_typed_expr(lookup, known_consts, &var_decl.body) {
+                    Ok(Some(rhs)) => {
+                        known_consts.push(var_decl.name.clone(), rhs);
+                        bindings.push(var_decl.name.clone());
+                        Ok(None)
+                    }
+                    Err(err) => Err(err),
+                    Ok(None) => Err(ConstEvalError::CannotBeEvaluatedToConst {
                         span: decl.span(lookup.engines).clone(),
-                    })
+                    }),
                 }
             }
             ty::TyAstNodeContent::Declaration(ty::TyDecl::ConstantDecl(const_decl)) => {
                 let ty_const_decl = lookup.engines.de().get_constant(&const_decl.decl_id);
-                if let Some(constant) = ty_const_decl
+                match ty_const_decl
                     .value
                     .as_ref()
                     .filter(|expr| !contains_outer_vars(expr, &HashSet::new()))
-                    .and_then(|expr| const_eval_typed_expr(lookup, known_consts, expr).ok())
-                    .flatten()
+                    .map(|expr| const_eval_typed_expr(lookup, known_consts, expr))
+                    .unwrap_or(Ok(None))
                 {
-                    known_consts.push(ty_const_decl.name().clone(), constant);
-                    bindings.push(ty_const_decl.name().clone());
-                    Ok(None)
-                } else {
-                    Err(ConstEvalError::CannotBeEvaluatedToConst {
+                    Ok(Some(constant)) => {
+                        known_consts.push(ty_const_decl.name().clone(), constant);
+                        bindings.push(ty_const_decl.name().clone());
+                        Ok(None)
+                    }
+                    Err(err) => Err(err),
+                    Ok(None) => Err(ConstEvalError::CannotBeEvaluatedToConst {
                         span: ty_const_decl.span.clone(),
-                    })
+                    }),
                 }
             }
             ty::TyAstNodeContent::Declaration(_) => Ok(None),
             ty::TyAstNodeContent::Expression(e) => match e.expression {
                 ty::TyExpressionVariant::ImplicitReturn(_) => {
-                    if let Ok(Some(constant)) = const_eval_typed_expr(lookup, known_consts, e) {
-                        Ok(Some(constant))
-                    } else {
-                        Err(ConstEvalError::CannotBeEvaluatedToConst {
+                    match const_eval_typed_expr(lookup, known_consts, e) {
+                        Ok(Some(constant)) => Ok(Some(constant)),
+                        Err(err) => Err(err),
+                        Ok(None) => Err(ConstEvalError::CannotBeEvaluatedToConst {
                             span: e.span.clone(),
-                        })
+                        }),
                     }
                 }
-                _ => {
-                    if const_eval_typed_expr(lookup, known_consts, e).is_err() {
-                        Err(ConstEvalError::CannotBeEvaluatedToConst {
-                            span: e.span.clone(),
-                        })
-                    } else {
-                        Ok(None)
-                    }
-                }
+                _ => const_eval_typed_expr(lookup, known_consts, e).map(|_| None),
             },
             ty::TyAstNodeContent::SideEffect(_) => Err(ConstEvalError::CannotBeEvaluatedToConst {
                 span: ast_node.span.clone(),
@@ -1289,7 +1295,7 @@ fn const_eval_intrinsic(
 ) -> Result<Option<Constant>, ConstEvalError> {
     let mut args = vec![];
     for arg in intrinsic.arguments.iter() {
-        if let Ok(Some(constant)) = const_eval_typed_expr(lookup, known_consts, arg) {
+        if let Some(constant) = const_eval_typed_expr(lookup, known_consts, arg)? {
             args.push(constant);
         } else {
             return Err(ConstEvalError::CannotBeEvaluatedToConst {
