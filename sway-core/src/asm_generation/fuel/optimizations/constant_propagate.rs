@@ -461,10 +461,122 @@ impl AbstractInstructionSet {
                 None => {
                     match &op.opcode {
                         Either::Left(op) => match op {
-                            VirtualOp::ECAL(_, _, _, _) => ResetKnown::All,
-                            // TODO: this constraint can be relaxed
-                            _ if op.has_side_effect() => ResetKnown::All,
-                            _ => ResetKnown::Defs,
+                            // Control / opaque: wipe all known values.
+                            VirtualOp::CALL(..)
+                            | VirtualOp::ECAL(..)
+                            | VirtualOp::RET(..)
+                            | VirtualOp::RETD(..)
+                            | VirtualOp::RVRT(..)
+                            | VirtualOp::BLOB(..)
+                            | VirtualOp::DataSectionOffsetPlaceholder
+                            | VirtualOp::ConfigurablesOffsetPlaceholder
+                            | VirtualOp::Undefined => ResetKnown::All,
+
+                            // Memory / stack.
+                            VirtualOp::ALOC(..)
+                            | VirtualOp::CFE(..)
+                            | VirtualOp::CFEI(..)
+                            | VirtualOp::CFS(..)
+                            | VirtualOp::CFSI(..)
+                            | VirtualOp::MCL(..)
+                            | VirtualOp::MCLI(..)
+                            | VirtualOp::MCP(..)
+                            | VirtualOp::MCPI(..)
+                            | VirtualOp::MEQ(..)
+                            | VirtualOp::SB(..)
+                            | VirtualOp::SW(..)
+                            // Wide (256-bit) arithmetic.
+                            | VirtualOp::WQOP(..)
+                            | VirtualOp::WQML(..)
+                            | VirtualOp::WQDV(..)
+                            | VirtualOp::WQMD(..)
+                            | VirtualOp::WQCM(..)
+                            | VirtualOp::WQAM(..)
+                            | VirtualOp::WQMM(..)
+                            // Contract / crypto / code.
+                            | VirtualOp::BHSH(..)
+                            | VirtualOp::CCP(..)
+                            | VirtualOp::CROO(..)
+                            | VirtualOp::CB(..)
+                            | VirtualOp::BLDD(..)
+                            | VirtualOp::LDC(..)
+                            | VirtualOp::K256(..)
+                            | VirtualOp::S256(..)
+                            | VirtualOp::ECK1(..)
+                            | VirtualOp::ECR1(..)
+                            | VirtualOp::ED19(..)
+                            | VirtualOp::ECOP(..)
+                            // Logging / coins / messages.
+                            | VirtualOp::LOG(..)
+                            | VirtualOp::LOGD(..)
+                            | VirtualOp::BURN(..)
+                            | VirtualOp::MINT(..)
+                            | VirtualOp::SMO(..)
+                            | VirtualOp::TR(..)
+                            | VirtualOp::TRO(..)
+                            // Contract storage.
+                            | VirtualOp::SCLR(..)
+                            | VirtualOp::SCWQ(..)
+                            | VirtualOp::SRWQ(..)
+                            | VirtualOp::SRDD(..)
+                            | VirtualOp::SRDI(..)
+                            | VirtualOp::SWW(..)
+                            | VirtualOp::SWWQ(..)
+                            | VirtualOp::SWRD(..)
+                            | VirtualOp::SWRI(..)
+                            | VirtualOp::SUPD(..)
+                            | VirtualOp::SUPI(..)
+                            | VirtualOp::SPLD(..)
+                            // Flags.
+                            | VirtualOp::FLAG(..)
+                            // ALU.
+                            | VirtualOp::ADD(..)
+                            | VirtualOp::ADDI(..)
+                            | VirtualOp::AND(..)
+                            | VirtualOp::ANDI(..)
+                            | VirtualOp::DIV(..)
+                            | VirtualOp::DIVI(..)
+                            | VirtualOp::EQ(..)
+                            | VirtualOp::EXP(..)
+                            | VirtualOp::EXPI(..)
+                            | VirtualOp::GT(..)
+                            | VirtualOp::LT(..)
+                            | VirtualOp::MLOG(..)
+                            | VirtualOp::MOD(..)
+                            | VirtualOp::MODI(..)
+                            | VirtualOp::MOVE(..)
+                            | VirtualOp::MOVI(..)
+                            | VirtualOp::MROO(..)
+                            | VirtualOp::MUL(..)
+                            | VirtualOp::MULI(..)
+                            | VirtualOp::NOOP
+                            | VirtualOp::NOT(..)
+                            | VirtualOp::OR(..)
+                            | VirtualOp::ORI(..)
+                            | VirtualOp::SLL(..)
+                            | VirtualOp::SLLI(..)
+                            | VirtualOp::SRL(..)
+                            | VirtualOp::SRLI(..)
+                            | VirtualOp::SUB(..)
+                            | VirtualOp::SUBI(..)
+                            | VirtualOp::XOR(..)
+                            | VirtualOp::XORI(..)
+                            // Loads / memory reads.
+                            | VirtualOp::LB(..)
+                            | VirtualOp::LW(..)
+                            // Chain / context reads.
+                            | VirtualOp::BAL(..)
+                            | VirtualOp::BHEI(..)
+                            | VirtualOp::CSIZ(..)
+                            | VirtualOp::BSIZ(..)
+                            | VirtualOp::SRW(..)
+                            | VirtualOp::TIME(..)
+                            | VirtualOp::EPAR(..)
+                            | VirtualOp::GM(..)
+                            | VirtualOp::GTF(..)
+                            // Virtual immediates.
+                            | VirtualOp::LoadDataId(..)
+                            | VirtualOp::AddrDataId(..) => ResetKnown::Defs,
                         },
                         Either::Right(op) => match op {
                             ControlFlowOp::Label(label) => {
@@ -588,6 +700,8 @@ pub fn checked_nth_root(target: u64, nth_root: u64) -> Option<u64> {
 
 #[cfg(test)]
 pub mod tests {
+    use crate::asm_lang::{VirtualImmediate06, VirtualImmediate12, VirtualImmediate24};
+
     use super::*;
     use expect_test::expect;
 
@@ -985,6 +1099,311 @@ pub mod tests {
             eq $r1 $r0 $one                         ; 71
                 None Some(Const(1))
                 Defs
+        "#]]
+        .assert_eq(&str);
+    }
+
+    fn imm12(v: u64) -> VirtualImmediate12 {
+        VirtualImmediate12::new(v)
+    }
+
+    fn imm06(v: u64) -> VirtualImmediate06 {
+        VirtualImmediate06::new(v)
+    }
+
+    fn imm24(v: u64) -> VirtualImmediate24 {
+        VirtualImmediate24::new(v)
+    }
+
+    #[test]
+    fn propagate_arg0_through_memory_ops_and_add() {
+        let mut str = String::new();
+        let hp = ConstantRegister::HeapPointer;
+        let sp = ConstantRegister::StackPointer;
+        optimise(
+            [
+                VirtualOp::r#move("0", ConstantRegister::FuncArg0).into(),
+                // Local memory
+                VirtualOp::MCL("0".into(), "2".into()).into(),
+                VirtualOp::MCLI("0".into(), 32.into()).into(),
+                VirtualOp::MCP("1".into(), "0".into(), "2".into()).into(),
+                VirtualOp::MCPI("1".into(), "0".into(), imm12(32)).into(),
+                VirtualOp::MEQ("3".into(), "0".into(), "1".into(), "2".into()).into(),
+                VirtualOp::SB("1".into(), "0".into(), imm12(32)).into(),
+                VirtualOp::SW("1".into(), "0".into(), imm12(32)).into(),
+                // Wide
+                VirtualOp::WQOP("1".into(), "0".into(), "2".into(), imm06(0)).into(),
+                VirtualOp::WQML("1".into(), "0".into(), "2".into(), imm06(0)).into(),
+                VirtualOp::WQDV("1".into(), "0".into(), "2".into(), imm06(0)).into(),
+                VirtualOp::WQMD("1".into(), "0".into(), "2".into(), "4".into()).into(),
+                VirtualOp::WQCM("3".into(), "0".into(), "2".into(), imm06(0)).into(),
+                VirtualOp::WQAM("1".into(), "0".into(), "2".into(), "4".into()).into(),
+                VirtualOp::WQMM("1".into(), "0".into(), "2".into(), "4".into()).into(),
+                // Stack / heap pointers
+                VirtualOp::ALOC(hp.into(), "0".into()).into(),
+                VirtualOp::CFEI(sp.into(), imm24(8)).into(),
+                VirtualOp::CFSI(sp.into(), imm24(8)).into(),
+                VirtualOp::CFE(sp.into(), "0".into()).into(),
+                VirtualOp::CFS(sp.into(), "0".into()).into(),
+                // Contract / blob memory fills
+                VirtualOp::BHSH("0".into(), "2".into()).into(),
+                VirtualOp::CCP("1".into(), "0".into(), "2".into(), "4".into()).into(),
+                VirtualOp::CROO("0".into(), "2".into()).into(),
+                VirtualOp::CB("0".into()).into(),
+                VirtualOp::BLDD("0".into(), "2".into(), "4".into(), "5".into()).into(),
+                VirtualOp::LDC("0".into(), "2".into(), "4".into(), imm06(0)).into(),
+                // Crypto digests
+                VirtualOp::K256("0".into(), "2".into(), "4".into()).into(),
+                VirtualOp::S256("0".into(), "2".into(), "4".into()).into(),
+                VirtualOp::ECK1("0".into(), "2".into(), "4".into()).into(),
+                VirtualOp::ECR1("0".into(), "2".into(), "4".into()).into(),
+                VirtualOp::ED19("0".into(), "2".into(), "4".into(), "5".into()).into(),
+                VirtualOp::ECOP("0".into(), "2".into(), "4".into(), "5".into()).into(),
+                // Logs / coins / messages
+                VirtualOp::LOG("0".into(), "2".into(), "4".into(), "5".into()).into(),
+                VirtualOp::LOGD("0".into(), "2".into(), "4".into(), "5".into()).into(),
+                VirtualOp::BURN("0".into(), "2".into()).into(),
+                VirtualOp::MINT("0".into(), "2".into()).into(),
+                VirtualOp::SMO("0".into(), "2".into(), "4".into(), "5".into()).into(),
+                VirtualOp::TR("0".into(), "2".into(), "4".into()).into(),
+                VirtualOp::TRO("0".into(), "2".into(), "4".into(), "5".into()).into(),
+                // State
+                VirtualOp::SCLR("0".into(), "2".into()).into(),
+                VirtualOp::SCWQ("0".into(), "3".into(), "2".into()).into(),
+                VirtualOp::SRWQ("0".into(), "3".into(), "2".into(), "4".into()).into(),
+                VirtualOp::SRDD("0".into(), "2".into(), "4".into(), "5".into()).into(),
+                VirtualOp::SRDI("0".into(), "2".into(), "4".into(), imm06(0)).into(),
+                VirtualOp::SWW("0".into(), "3".into(), "2".into()).into(),
+                VirtualOp::SWWQ("0".into(), "3".into(), "2".into(), "4".into()).into(),
+                VirtualOp::SWRD("0".into(), "2".into(), "4".into()).into(),
+                VirtualOp::SWRI("0".into(), "2".into(), imm12(0)).into(),
+                VirtualOp::SUPD("0".into(), "2".into(), "4".into(), "5".into()).into(),
+                VirtualOp::SUPI("0".into(), "2".into(), "4".into(), imm06(0)).into(),
+                VirtualOp::SPLD("3".into(), "0".into()).into(),
+                VirtualOp::FLAG("0".into()).into(),
+                // Still-known alias after all of the above
+                VirtualOp::add(ConstantRegister::FuncArg1, "0", ConstantRegister::Zero).into(),
+            ],
+            |ops| ops.constant_propagate(|s| str.push_str(s)),
+        );
+        expect![[r#"
+            move $r0 $$arg0                         ; 0
+                Nothing
+            mcl $$arg0 $r2                          ; 1
+                Defs
+            mcli $$arg0 i32                         ; 2
+                Defs
+            mcp $r1 $$arg0 $r2                      ; 3
+                Defs
+            mcpi $r1 $$arg0 i32                     ; 4
+                Defs
+            meq $r3 $$arg0 $r1 $r2                  ; 5
+                Defs
+            sb $r1 $$arg0 i32                       ; 6
+                Defs
+            sw $r1 $$arg0 i32                       ; 7
+                Defs
+            wqop $r1 $$arg0 $r2 i0                  ; 8
+                Defs
+            wqml $r1 $$arg0 $r2 i0                  ; 9
+                Defs
+            wqdv $r1 $$arg0 $r2 i0                  ; 10
+                Defs
+            wqmd $r1 $$arg0 $r2 $r4                 ; 11
+                Defs
+            wqcm $r3 $$arg0 $r2 i0                  ; 12
+                Defs
+            wqam $r1 $$arg0 $r2 $r4                 ; 13
+                Defs
+            wqmm $r1 $$arg0 $r2 $r4                 ; 14
+                Defs
+            aloc $$arg0                             ; 15
+                Defs
+            cfei i8                                 ; 16
+                Defs
+            cfsi i8                                 ; 17
+                Defs
+            cfe $$arg0                              ; 18
+                Defs
+            cfs $$arg0                              ; 19
+                Defs
+            bhsh $$arg0 $r2                         ; 20
+                Defs
+            ccp $r1 $$arg0 $r2 $r4                  ; 21
+                Defs
+            croo $$arg0 $r2                         ; 22
+                Defs
+            cb $$arg0                               ; 23
+                Defs
+            bldd $$arg0 $r2 $r4 $r5                 ; 24
+                Defs
+            ldc $$arg0 $r2 $r4 i0                   ; 25
+                Defs
+            k256 $$arg0 $r2 $r4                     ; 26
+                Defs
+            s256 $$arg0 $r2 $r4                     ; 27
+                Defs
+            eck1 $$arg0 $r2 $r4                     ; 28
+                Defs
+            ecr1 $$arg0 $r2 $r4                     ; 29
+                Defs
+            ed19 $$arg0 $r2 $r4 $r5                 ; 30
+                Defs
+            ecop $$arg0 $r2 $r4 $r5                 ; 31
+                Defs
+            log $$arg0 $r2 $r4 $r5                  ; 32
+                Defs
+            logd $$arg0 $r2 $r4 $r5                 ; 33
+                Defs
+            burn $$arg0 $r2                         ; 34
+                Defs
+            mint $$arg0 $r2                         ; 35
+                Defs
+            smo $$arg0 $r2 $r4 $r5                  ; 36
+                Defs
+            tr $$arg0 $r2 $r4                       ; 37
+                Defs
+            tro $$arg0 $r2 $r4 $r5                  ; 38
+                Defs
+            sclr $$arg0 $r2                         ; 39
+                Defs
+            scwq $$arg0 $r3 $r2                     ; 40
+                Defs
+            srwq $$arg0 $r3 $r2 $r4                 ; 41
+                Defs
+            srdd $$arg0 $r2 $r4 $r5                 ; 42
+                Defs
+            srdi $$arg0 $r2 $r4 i0                  ; 43
+                Defs
+            sww $$arg0 $r3 $r2                      ; 44
+                Defs
+            swwq $$arg0 $r3 $r2 $r4                 ; 45
+                Defs
+            swrd $$arg0 $r2 $r4                     ; 46
+                Defs
+            swri $$arg0 $r2 i0                      ; 47
+                Defs
+            supd $$arg0 $r2 $r4 $r5                 ; 48
+                Defs
+            supi $$arg0 $r2 $r4 i0                  ; 49
+                Defs
+            spld $r3 $$arg0                         ; 50
+                Defs
+            flag $$arg0                             ; 51
+                Defs
+            add $$arg1 $$arg0 $zero                 ; 52
+                None Some(Const(0))
+                changed to: move $$arg1 $$arg0                      ; 52
+                Nothing
+        "#]]
+        .assert_eq(&str);
+    }
+
+    #[test]
+    fn arg0_clobbered_before_use() {
+        let mut str = String::new();
+        optimise(
+            [
+                VirtualOp::r#move("0", ConstantRegister::FuncArg0).into(),
+                // Clobber $$arg0
+                VirtualOp::r#move(ConstantRegister::FuncArg0, "5").into(),
+                VirtualOp::add(ConstantRegister::FuncArg1, "0", ConstantRegister::Zero).into(),
+            ],
+            |ops| ops.constant_propagate(|s| str.push_str(s)),
+        );
+        expect![[r#"
+            move $r0 $$arg0                         ; 0
+                Nothing
+            move $$arg0 $r5                         ; 1
+                Nothing
+            add $$arg1 $r0 $zero                    ; 2
+                None Some(Const(0))
+                changed to: move $$arg1 $r0                         ; 2
+                Nothing
+        "#]]
+        .assert_eq(&str);
+    }
+
+    #[test]
+    fn call_throws_all_known_values_away() {
+        let mut str = String::new();
+        optimise(
+            [
+                VirtualOp::r#move("0", ConstantRegister::FuncArg0).into(),
+                Op::call(Label(0)),
+                VirtualOp::add(ConstantRegister::FuncArg1, "0", ConstantRegister::Zero).into(),
+            ],
+            |ops| ops.constant_propagate(|s| str.push_str(s)),
+        );
+        expect![[r#"
+            move $r0 $$arg0                         ; 0
+                Nothing
+            fncall .0                               ; 1
+                All
+            add $$arg1 $r0 $zero                    ; 2
+                None Some(Const(0))
+                changed to: move $$arg1 $r0                         ; 2
+                Nothing
+        "#]]
+        .assert_eq(&str);
+    }
+
+    #[test]
+    fn contract_call_and_ret_clear_all() {
+        let mut str = String::new();
+        optimise(
+            [
+                VirtualOp::r#move("0", ConstantRegister::FuncArg0).into(),
+                VirtualOp::CALL("1".into(), "2".into(), "3".into(), "4".into()).into(),
+                VirtualOp::add(ConstantRegister::FuncArg1, "0", ConstantRegister::Zero).into(),
+                VirtualOp::r#move("5", ConstantRegister::FuncArg0).into(),
+                VirtualOp::RET("5".into()).into(),
+                VirtualOp::add(ConstantRegister::FuncArg2, "5", ConstantRegister::Zero).into(),
+            ],
+            |ops| ops.constant_propagate(|s| str.push_str(s)),
+        );
+        expect![[r#"
+            move $r0 $$arg0                         ; 0
+                Nothing
+            call $r1 $r2 $r3 $r4                    ; 1
+                All
+            add $$arg1 $r0 $zero                    ; 2
+                None Some(Const(0))
+                changed to: move $$arg1 $r0                         ; 2
+                Nothing
+            move $r5 $$arg0                         ; 3
+                Nothing
+            ret $$arg0                              ; 4
+                All
+            add $$arg2 $r5 $zero                    ; 5
+                None Some(Const(0))
+                changed to: move $$arg2 $r5                         ; 5
+                Nothing
+        "#]]
+        .assert_eq(&str);
+    }
+
+    #[test]
+    fn r0_clobbered_before_use() {
+        let mut str = String::new();
+        optimise(
+            [
+                VirtualOp::r#move("0", ConstantRegister::FuncArg0).into(),
+                // Clobber $r0
+                VirtualOp::movi("0", 1).into(),
+                VirtualOp::add(ConstantRegister::FuncArg1, "0", ConstantRegister::Zero).into(),
+            ],
+            |ops| ops.constant_propagate(|s| str.push_str(s)),
+        );
+        expect![[r#"
+            move $r0 $$arg0                         ; 0
+                Nothing
+            movi $r0 i1                             ; 1
+                Nothing
+            add $$arg1 $one $zero                   ; 2
+                Some(Const(1)) Some(Const(0))
+                changed to: movi $$arg1 i1                          ; 2
+                Nothing
         "#]]
         .assert_eq(&str);
     }
