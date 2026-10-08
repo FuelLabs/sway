@@ -83,13 +83,14 @@ impl FinalizedAsm {
         build_config: &BuildConfig,
     ) -> Result<CompiledBytecode, ErrorEmitted> {
         match &self.program_section {
-            InstructionSet::Fuel { ops } => Ok(to_bytecode(
+            InstructionSet::Fuel { ops } => to_bytecode(
                 ops,
                 &self.data_section,
                 source_map,
                 source_engine,
                 build_config,
-            )),
+            )
+            .map_err(|e| handler.emit_err(e)),
             InstructionSet::Evm { ops } => {
                 let mut assembler = Assembler::new();
                 if let Err(e) = assembler.push_all(ops.clone()) {
@@ -126,7 +127,7 @@ fn to_bytecode(
     source_map: &mut SourceMap,
     source_engine: &SourceEngine,
     build_config: &BuildConfig,
-) -> CompiledBytecode {
+) -> Result<CompiledBytecode, CompileError> {
     // Some instructions are expanded into multiple instructions, so we compute,
     // using `size_in_bytes`, exactly how many bytes will be generated to calculate the offset.
     let offset_to_data_section_in_bytes: u64 =
@@ -160,7 +161,7 @@ fn to_bytecode(
             offset_to_data_section_in_bytes,
             offset_from_instr_start,
             data_section,
-        );
+        )?;
         offset_from_instr_start += op.size_in_bytes(data_section);
 
         match fuel_op {
@@ -336,10 +337,10 @@ fn to_bytecode(
     let mut data_section = data_section.serialize_to_bytes();
     bytecode.append(&mut data_section);
 
-    CompiledBytecode {
+    Ok(CompiledBytecode {
         bytecode,
         named_data_section_entries_offsets,
-    }
+    })
 }
 
 // Pretty prints registers.

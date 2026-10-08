@@ -50,7 +50,8 @@ impl AllocatedProgram {
         // into the data section does insert one. `AddrDataId`s pointing to
         // configurables are sized against this worst-case offset. Note that in practice
         // this "pessimization" almost never results in generating two instructions
-        // `MOVI` + `ADD` instead of one `ADDI`.
+        // `MOVI` + `ADD` instead of one `ADDI`. Offsets that exceed Imm18 cannot use
+        // that far form and fail at bytecode emission.
         let num_non_copy_loads = abstract_ops
             .ops
             .iter()
@@ -70,6 +71,7 @@ impl AllocatedProgram {
 
         let (realized_ops, mut label_offsets) =
             abstract_ops.lower_to_realized_ops(&mut self.data_section, &far_jump_sizes)?;
+
         let ops = realized_ops.lower_to_allocated_ops();
 
         // Collect the entry point offsets.

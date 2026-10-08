@@ -1,16 +1,16 @@
 script;
 
 struct Wrapped {
-    v: u64,
+    v: bool,
 }
 
-// These types decode fns should coalesce into 
+// These types decode fns should coalesce into
 // only one in the final IR
 configurable {
-    WRAPPED: Wrapped = Wrapped { v: 1 },
-    TUPLE: (u64,) = (2,),
+    WRAPPED: Wrapped = Wrapped { v: true },
+    TUPLE: (bool,) = (false,),
 }
 
-fn main() -> u64 {
-    WRAPPED.v + TUPLE.0
+fn main() -> bool {
+    WRAPPED.v && TUPLE.0
 }
