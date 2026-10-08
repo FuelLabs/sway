@@ -1,0 +1,253 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Standard Library - The Sway Programming Language</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../highlight.css">
+        <link rel="stylesheet" href="../tomorrow-night.css">
+        <link rel="stylesheet" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">The Sway Programming Language</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/FuelLabs/sway" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="standard-library"><a class="header" href="#standard-library">Standard Library</a></h1>
+<!-- This section should explain what the std-lib is -->
+<!-- std_lib:example:start -->
+<p>Similar to Rust, Sway comes with its own standard library.</p>
+<p>The Sway Standard Library is the foundation of portable Sway software, a set of minimal shared abstractions for the broader Sway ecosystem. It offers core types, like <code>Result&lt;T, E&gt;</code> and <code>Option&lt;T&gt;</code>, library-defined operations on language primitives, native asset management, blockchain contextual operations, access control, storage management, and support for types from other VMs, among many other things.</p>
+<!-- std_lib:example:end -->
+<p>The entire Sway standard library is a Forc project called <code>std</code>, and is available directly <a href="https://github.com/FuelLabs/sway/tree/master/sway-lib-std">here</a>. Navigate to the appropriate tagged release if the latest <code>master</code> is not compatible. You can find the latest <code>std</code> documentation <a href="https://fuellabs.github.io/sway/master/std/">here</a>.</p>
+<h2 id="using-the-standard-library"><a class="header" href="#using-the-standard-library">Using the Standard Library</a></h2>
+<p>The standard library is made implicitly available to all Forc projects created using <a href="../forc/commands/forc_new.html"><code>forc new</code></a>. In other words, it is not required to manually specify <code>std</code> as an explicit dependency. Forc will automatically use the version of <code>std</code> that matches its version.</p>
+<p>Importing items from the standard library can be done using the <code>use</code> keyword, just as importing items from any Sway project. For example:</p>
+<pre><code class="language-sway">use std::storage::storage_vec::*;
+</code></pre>
+<p>This imports the <code>StorageVec</code> type into the current namespace.</p>
+<h2 id="standard-library-prelude"><a class="header" href="#standard-library-prelude">Standard Library Prelude</a></h2>
+<!-- This section should explain what the std-lib prelude is -->
+<!-- prelude:example:start -->
+<p>Sway comes with a variety of things in its standard library. However, if you had to manually import every single thing that you used, it would be very verbose. But importing a lot of things that a program never uses isn't good either. A balance needs to be struck.</p>
+<p>The prelude is the list of things that Sway automatically imports into every Sway program. It's kept as small as possible, and is focused on things which are used in almost every single Sway program.</p>
+<p>The current version of the prelude lives in <a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/prelude.sw"><code>std::prelude</code></a>, and re-exports the following:</p>
+<ul>
+<li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/address.sw"><code>std::address::Address</code></a>, a wrapper around the <code>b256</code> type representing a wallet address.</li>
+<li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/contract_id.sw"><code>std::contract_id::ContractId</code></a>, a wrapper around the <code>b256</code> type representing the ID of a contract.</li>
+<li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/identity.sw"><code>std::identity::Identity</code></a>, an enum with two possible variants: <code>Address: Address</code> and <code>ContractId: ContractId</code>.</li>
+<li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/vec.sw"><code>std::vec::Vec</code></a>, a growable, heap-allocated vector.</li>
+<li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/storage/storage_key.sw"><code>std::storage::storage_key::*</code></a>, contains the API for accessing a <code>std::storage::StorageKey</code> which describes a location in storage.</li>
+<li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/storage/storage_map.sw"><code>std::storage::storage_map::*</code></a>, a key-value mapping in contract storage.</li>
+<li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/option.sw"><code>std::option::Option</code></a>, an enum which expresses the presence or absence of a value.</li>
+<li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/result.sw"><code>std::result::Result</code></a>, an enum for functions that may succeed or fail.</li>
+<li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/assert.sw"><code>std::assert::assert</code></a>, a function that reverts the VM if the condition provided to it is <code>false</code>.</li>
+<li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/assert.sw"><code>std::assert::assert_eq</code></a>, a function that reverts the VM and logs its two inputs <code>v1</code> and <code>v2</code> if the condition <code>v1</code> == <code>v2</code> is <code>false</code>.</li>
+<li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/assert.sw"><code>std::assert::assert_ne</code></a>, a function that reverts the VM and logs its two inputs <code>v1</code> and <code>v2</code> if the condition <code>v1</code> != <code>v2</code> is <code>false</code>.</li>
+<li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/revert.sw"><code>std::revert::require</code></a>, a function that reverts the VM and logs a given value if the condition provided to it is <code>false</code>.</li>
+<li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/revert.sw"><code>std::revert::revert</code></a>, a function that reverts the VM.</li>
+<li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/logging.sw"><code>std::logging::log</code></a>, a function that logs arbitrary stack types.</li>
+<li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/auth.sw"><code>std::auth::msg_sender</code></a>, a function that gets the <code>Identity</code> from which a call was made.</li>
+<li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/primitives.sw"><code>std::primitives::*</code></a>, methods on primitive types.</li>
+<li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/primitive_conversions.sw"><code>std::primitive_conversions::*</code></a>, methods for converting between primitive types.</li>
+<li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/raw_ptr.sw"><code>std::raw_ptr::*</code></a>, functions for working with raw pointers.</li>
+<li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/raw_slice.sw"><code>std::raw_slice::*</code></a>, functions for working with raw slices.</li>
+<li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/ops.sw"><code>std::ops::*</code></a>, mathematical operations such as addition, subtraction, multiplication, and division.</li>
+<li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/str.sw"><code>std::str::*</code></a>, methods for working with strings.</li>
+<li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/codec.sw"><code>std::codec::*</code></a>, automatic serialization and deserialization of types.</li>
+</ul>
+<!-- prelude:example:end -->
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../introduction/forc_project.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../introduction/sway_standards.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../introduction/forc_project.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../introduction/sway_standards.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>
