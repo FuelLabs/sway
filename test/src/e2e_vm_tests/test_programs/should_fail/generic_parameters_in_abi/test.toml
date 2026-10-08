@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: $()fn fun<T>() -> bool;
+# nextln: $()Generic parameters are not supported in ABI declarations.

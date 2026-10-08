@@ -1036,6 +1036,8 @@ pub enum CompileError {
     },
     #[error("Associated types not supported in ABI.")]
     AssociatedTypeNotSupportedInAbi { span: Span },
+    #[error("Generic parameters are not supported in ABI declarations.")]
+    GenericParametersNotSupportedInAbi { span: Span },
     #[error("Cannot call ABI supertrait's method as a contract method: \"{fn_name}\"")]
     AbiSupertraitMethodCallAsContractCall { fn_name: Ident, span: Span },
     #[error(
@@ -1456,6 +1458,7 @@ impl Spanned for CompileError {
             AbiShadowsSuperAbiMethod { span, .. } => span.clone(),
             ConflictingSuperAbiMethods { span, .. } => span.clone(),
             AssociatedTypeNotSupportedInAbi { span, .. } => span.clone(),
+            GenericParametersNotSupportedInAbi { span, .. } => span.clone(),
             AbiSupertraitMethodCallAsContractCall { span, .. } => span.clone(),
             FunctionSelectorClash { span, .. } => span.clone(),
             TypeNotAllowed { span, .. } => span.clone(),
