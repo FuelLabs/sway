@@ -1,6 +1,6 @@
 use crate::{
     decl_engine::{
-        engine::{DeclEngineGet, DeclEngineReplace},
+        engine::DeclEngineGet,
         DeclEngineInsert, DeclRefFunction, ReplaceDecls, UpdateConstantExpression,
     },
     language::{
@@ -182,7 +182,7 @@ pub(crate) fn type_check_method_application(
             // We now try to type check it again, this time with the type annotation.
             ctx.by_ref()
                 .with_help_text(
-                    "Function application argument type must match function parameter type.",
+                    "Function call argument type must match function parameter type.",
                 )
                 .with_type_annotation(param.type_argument.type_id)
         } else {
@@ -266,10 +266,10 @@ pub(crate) fn type_check_method_application(
             };
         }
 
-        // check if method is non-payable but we do not know _statically_
-        // the amount of coins sent in the contract call is zero
-        // if the coins contract call parameter is not specified
-        // it's considered to be zero and hence no error needs to be reported
+        // Check if method is non-payable but we do not know _statically_
+        // the amount of coins sent in the contract call is zero.
+        // If the coins contract call parameter is not specified
+        // it's considered to be zero and hence no error needs to be reported.
         if let Some(coins_expr) = contract_call_params_map.get(CONTRACT_CALL_COINS_PARAMETER_NAME) {
             if coins_analysis::possibly_nonzero_u64_expression(&ctx, coins_expr)
                 && !method
@@ -286,7 +286,7 @@ pub(crate) fn type_check_method_application(
         }
     }
 
-    // If this function is being called with method call syntax, a.b(c),
+    // If this function is being called with method call syntax, `a.b(c)`,
     // then make sure the first parameter is self, else issue an error.
     let mut is_method_call_syntax_used = false;
     if !method.is_contract_call {
@@ -626,9 +626,9 @@ pub(crate) fn type_check_method_application(
                 ..
             } = &*type_engine.get(t.initial_type_id)
             {
-                // Method type parameters that have is_from_parent set to true use the base ident as defined in
+                // Method type parameters that have `is_from_parent` set to true use the base ident as defined
                 // in the impl trait. The type parameter name may be different in the Struct or Enum.
-                // Thus we use the index in the Struct's or Enum's type parameter the impl trait type parameter
+                // Thus, we use the index in the Struct's or Enum's type parameter the impl trait type parameter
                 // was used on.
                 let mut names_index = HashMap::<Ident, usize>::new();
                 for (index, t_arg) in type_arguments.iter().enumerate() {
@@ -783,7 +783,13 @@ pub(crate) fn type_check_method_application(
         let method_is_trait_method_dummy = method.is_trait_method_dummy;
 
         if has_changes.has_changes() {
-            decl_engine.replace(*fn_ref.id(), method);
+            // The modified `method` contains the call-site-specific specializations,
+            // e.g., the substitution of the generic blanket type by the `method_target`,
+            // or the replaced declarations coming from this call-site's trait
+            // constraints. Therefore, the `method` must be inserted as a new
+            // declaration, and must not replace the declaration it was derived from,
+            // which can be shared by other call-sites.
+            fn_ref = decl_engine.insert_modified(method, *fn_ref.id());
         }
 
         if !ctx.code_block_first_pass()
