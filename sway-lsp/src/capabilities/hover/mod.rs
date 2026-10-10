@@ -70,14 +70,7 @@ pub fn hover_data(
         }
         // The `TypeInfo` of the token does not contain an `Ident`. In this case,
         // we use the `Ident` of the token itself.
-        None => hover_format(
-            &state.engines.read(),
-            token,
-            &ident.name,
-            client_config,
-            &sync,
-            namespace,
-        ),
+        None => hover_format(engines, token, &ident.name, client_config, &sync, namespace),
     };
 
     Some(lsp_types::Hover {
