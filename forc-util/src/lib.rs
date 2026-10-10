@@ -433,12 +433,12 @@ pub fn format_diagnostic(diagnostic: &Diagnostic) {
 
     // We first display labels from the issue file...
     if diagnostic.issue().is_in_source() {
-        snippet_slices.push(construct_slice(diagnostic.labels_in_issue_source()))
+        snippet_slices.extend(construct_slices(diagnostic.labels_in_issue_source()))
     }
 
     // ...and then all the remaining labels from the other files.
     for source_path in diagnostic.related_sources(false) {
-        snippet_slices.push(construct_slice(diagnostic.labels_in_source(source_path)))
+        snippet_slices.extend(construct_slices(diagnostic.labels_in_source(source_path)))
     }
 
     let mut snippet_footer = Vec::<Annotation<'_>>::new();
@@ -525,6 +525,28 @@ pub fn format_diagnostic(diagnostic: &Diagnostic) {
             Level::Error => AnnotationType::Error,
         }
     }
+}
+
+fn construct_slices(labels: Vec<&Label>) -> Vec<Slice> {
+    let mut label_groups: Vec<Vec<&Label>> = vec![];
+
+    // A source path may be loaded into multiple compilation contexts. Keep
+    // labels from distinct source instances in separate slices so their spans
+    // are never joined or rendered against a different source buffer.
+    for label in labels {
+        if let Some(group) = label_groups.iter_mut().find(|group| {
+            let first_span = group[0].span();
+            let label_span = label.span();
+            std::ptr::eq(first_span.input(), label_span.input())
+                && first_span.source_id() == label_span.source_id()
+        }) {
+            group.push(label);
+        } else {
+            label_groups.push(vec![label]);
+        }
+    }
+
+    label_groups.into_iter().map(construct_slice).collect()
 }
 
 fn construct_slice(labels: Vec<&Label>) -> Slice {
