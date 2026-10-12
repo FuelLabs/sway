@@ -33,8 +33,7 @@ where
         let mut i = 0;
         while i < N {
             self[i] = default;
-            // TODO: Uncomment this `assert_eq` once https://github.com/FuelLabs/sway/issues/7602 is fixed.
-            // assert_eq(self[i], default);
+            assert_eq(self[i], default);
             i += 1;
         }
     }
