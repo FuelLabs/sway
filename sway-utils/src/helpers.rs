@@ -58,7 +58,7 @@ pub fn find_nested_dir_with_file(starter_path: &Path, file_name: &str) -> Option
     } else {
         starter_path.parent()?
     };
-    WalkDir::new(starter_path).into_iter().find_map(|e| {
+    WalkDir::new(starter_dir).into_iter().find_map(|e| {
         let entry = e.ok()?;
         if entry.path() != starter_dir.join(file_name) && entry.file_name() == OsStr::new(file_name)
         {
@@ -116,4 +116,39 @@ where
                 .and_then(|parent_dir| find_parent_manifest_dir_with_check(parent_dir, check))
         }
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::{
+        fs::{self, File},
+        process,
+        time::{SystemTime, UNIX_EPOCH},
+    };
+
+    fn test_dir(name: &str) -> PathBuf {
+        let nanos = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("system time should be after UNIX_EPOCH")
+            .as_nanos();
+        std::env::temp_dir().join(format!("sway-utils-{name}-{}-{nanos}", process::id()))
+    }
+
+    #[test]
+    fn finds_nested_dir_when_starter_path_is_a_file() {
+        let root = test_dir("finds-nested-dir-from-file");
+        let nested_dir = root.join("nested");
+        fs::create_dir_all(&nested_dir).expect("failed to create nested dir");
+
+        let file_name = "Forc.toml";
+        let starter_file = root.join(file_name);
+        File::create(&starter_file).expect("failed to create root manifest");
+        File::create(nested_dir.join(file_name)).expect("failed to create nested manifest");
+
+        let nested = find_nested_dir_with_file(&starter_file, file_name);
+
+        fs::remove_dir_all(&root).expect("failed to remove test dir");
+        assert_eq!(nested, Some(nested_dir));
+    }
 }
