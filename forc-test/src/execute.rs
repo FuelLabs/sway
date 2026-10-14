@@ -316,13 +316,21 @@ fn find_jump_instruction_index(bytecode: &[u8]) -> usize {
     // This will be `__entry` for script/predicate/contract using encoding v1;
     // `main` for script/predicate using encoding v0;
     // or the first function for libraries
-    // MOVE R59 $sp                                    ;; [26, 236, 80, 0]
-    let a = vm::fuel_asm::op::move_(59, fuel_asm::RegId::SP).to_bytes();
+    // MOVE $locals_base $sp                           ;; [26, <locals_base>, 80, 0]
+    //
+    // The destination register is the compiler-reserved `$locals_base`, whose number
+    // is an internal compiler detail that can change; read it from sway-core instead
+    // of hardcoding it (it was hardcoded to `59` previously, which broke when the
+    // reserved-register chain shifted).
+    let a =
+        vm::fuel_asm::op::move_(sway_core::LOCALS_BASE_REGISTER, fuel_asm::RegId::SP).to_bytes();
 
     // for contracts using encoding v0
     // search the first `lw $r0 $fp i73`
     // which is the start of the fn selector
     // LW $writable $fp 0x49                           ;; [93, 64, 96, 73]
+    // (`WRITABLE`/`$fp` are VM registers and `73` is a frame offset immediate, neither
+    // of which depend on the compiler's reserved-register layout.)
     let b = vm::fuel_asm::op::lw(fuel_asm::RegId::WRITABLE, fuel_asm::RegId::FP, 73).to_bytes();
 
     bytecode
