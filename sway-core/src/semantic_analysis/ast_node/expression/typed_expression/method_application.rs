@@ -1,7 +1,7 @@
 use crate::{
     decl_engine::{
-        engine::DeclEngineGet,
-        DeclEngineInsert, DeclRefFunction, ReplaceDecls, UpdateConstantExpression,
+        engine::DeclEngineGet, DeclEngineInsert, DeclRefFunction, ReplaceDecls,
+        UpdateConstantExpression,
     },
     language::{
         parsed::*,
@@ -181,9 +181,7 @@ pub(crate) fn type_check_method_application(
         let ctx = if let Some(param) = method.parameters.get(param_index) {
             // We now try to type check it again, this time with the type annotation.
             ctx.by_ref()
-                .with_help_text(
-                    "Function call argument type must match function parameter type.",
-                )
+                .with_help_text("Function call argument type must match function parameter type.")
                 .with_type_annotation(param.type_argument.type_id)
         } else {
             ctx.by_ref()
