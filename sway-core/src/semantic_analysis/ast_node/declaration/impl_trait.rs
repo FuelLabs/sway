@@ -717,6 +717,23 @@ impl TyImplSelfOrTrait {
                         .insert(impl_trait.clone(), *parsed_decl_id)
                         .into();
 
+                    // Set the `implementing_type` on all the function items, in-place,
+                    // under the decl ids coming from the signature type checking, which
+                    // are already registered in the trait map.
+                    // Setting it once here is sufficient, because all the subsequent
+                    // modifications of the function items preserve the `implementing_type`.
+                    // This also guarantees that the `implementing_type` is set even on
+                    // the function items whose body type checking fails. Such functions
+                    // can still have perfectly valid signatures, and must remain visible
+                    // to method lookups, which skip methods whose `implementing_type` is `None`.
+                    for item in impl_trait.items.iter() {
+                        if let TyTraitItem::Fn(decl_ref) = item {
+                            let mut fn_decl = (*decl_engine.get_function(decl_ref.id())).clone();
+                            fn_decl.set_implementing_type(impl_trait_decl.clone());
+                            decl_engine.replace(*decl_ref.id(), fn_decl);
+                        }
+                    }
+
                     let new_items = &impl_trait.items;
                     for (item, new_item) in items.clone().into_iter().zip(new_items) {
                         match (item, new_item) {
@@ -724,7 +741,6 @@ impl TyImplSelfOrTrait {
                                 let fn_decl = engines.pe().get_function(&fn_decl_id);
                                 let mut ty_fn_decl =
                                     (*decl_engine.get_function(decl_ref.id())).clone();
-                                ty_fn_decl.set_implementing_type(impl_trait_decl.clone());
                                 let new_ty_fn_decl = match ty::TyFunctionDecl::type_check_body(
                                     handler,
                                     ctx.by_ref(),
@@ -786,10 +802,6 @@ impl TyImplSelfOrTrait {
                                 let fn_decl = engines.pe().get_function(fn_decl_id);
                                 let mut ty_fn_decl =
                                     (*decl_engine.get_function(decl_ref.id())).clone();
-                                // Set the implementing type again, in case the first body
-                                // type checking pass above returned error for this function item
-                                // and did not insert it into the decl engine.
-                                ty_fn_decl.set_implementing_type(impl_trait_decl.clone());
                                 let new_ty_fn_decl = match ty::TyFunctionDecl::type_check_body(
                                     handler,
                                     ctx.by_ref(),

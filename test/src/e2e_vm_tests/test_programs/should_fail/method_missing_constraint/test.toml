@@ -1,7 +1,7 @@
 category = "fail"
 
 # check: $()Self::also_t2(self);
-# nextln: $()Trait "T2" is not implemented for type "_".
+# nextln: $()Trait "T2" is not implemented for type "T".
 
 # check: $()Associated function or method is not found
 # check: $()a.only_t1();
