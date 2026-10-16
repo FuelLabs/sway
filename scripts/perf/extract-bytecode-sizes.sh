@@ -1,4 +1,4 @@
-#!/bin/bash
+#! /usr/bin/env bash
 
 # This script extracts project names and bytecode sizes from a `forc test` or
 # `forc build` output.
