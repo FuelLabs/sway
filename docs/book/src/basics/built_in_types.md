@@ -61,6 +61,18 @@ Numbers can be declared with binary syntax, hexadecimal syntax, base-10 syntax, 
 0xfff_aaa   // underscore delineated hexadecimal
 ```
 
+An integer literal can be given a specific type by adding a type suffix to it. The suffix can be written directly after the number or separated from it with an underscore:
+
+```sway
+let a = 42u8;     // u8
+let b = 1_000u16; // u16
+let c = 7_u32;    // u32
+let d = 10u64;    // u64, the same as just `10`
+let e = 1u256;    // u256
+```
+
+This is useful when the type cannot be inferred from the context, for example when calling a method directly on a literal such as `0_u8.hash(state)`.
+
 <!-- This section should explain the default numeric type in Sway -->
 <!-- default_num:example:start -->
 The default numeric type is `u64`. The FuelVM's word size is 64 bits, and the cases where using a smaller numeric type saves space are minimal.
