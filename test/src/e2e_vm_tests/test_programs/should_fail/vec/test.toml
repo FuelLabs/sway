@@ -4,7 +4,7 @@ category = "fail"
 # nextln: $()Mismatched types.
 # nextln: $()expected: u8
 # nextln: $()found:    bool.
-# nextln: $()help: Function application argument type must match function parameter type.
+# nextln: $()help: Function call argument type must match function parameter type.
 
 # check: vector.push(false);
 # nextln: $()This parameter was declared as type u8, but argument of type bool was provided.
@@ -13,7 +13,7 @@ category = "fail"
 # nextln: $()Mismatched types.
 # nextln: $()expected: u8
 # nextln: $()found:    str.
-# nextln: $()help: Function application argument type must match function parameter type.
+# nextln: $()help: Function call argument type must match function parameter type.
 
 # check: vector.push("this should break it 1");
 # nextln: $()This parameter was declared as type u8, but argument of type str was provided.
@@ -22,7 +22,7 @@ category = "fail"
 # nextln: $()Mismatched types.
 # nextln: $()expected: u8
 # nextln: $()found:    str.
-# nextln: $()help: Function application argument type must match function parameter type.
+# nextln: $()help: Function call argument type must match function parameter type.
 
 # check: vector.push("this should break it 2");
 # nextln: $()This parameter was declared as type u8, but argument of type str was provided.
