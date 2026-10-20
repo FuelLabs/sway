@@ -1129,6 +1129,13 @@ fn item_abi_to_abi_declaration(
 
                     let trait_item = match annotated.value {
                         ItemTraitItem::Fn(fn_signature, _) => {
+                            if let Some(generics) = &fn_signature.generics {
+                                return Err(handler.emit_err(
+                                    CompileError::GenericParametersNotSupportedInAbi {
+                                        span: generics.parameters.span(),
+                                    },
+                                ));
+                            }
                             let trait_fn = fn_signature_to_trait_fn(
                                 context,
                                 handler,
