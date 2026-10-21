@@ -33,6 +33,8 @@ pub mod mem2reg;
 pub use mem2reg::*;
 pub mod memcpyopt;
 pub use memcpyopt::*;
+pub mod memcpy_push_down;
+pub use memcpy_push_down::*;
 pub mod misc_demotion;
 pub use misc_demotion::*;
 pub mod ret_demotion;

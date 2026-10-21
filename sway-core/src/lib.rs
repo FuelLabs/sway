@@ -68,6 +68,7 @@ use sway_ir::{
     PassManager, ARG_DEMOTION_NAME, ARG_POINTEE_MUTABILITY_TAGGER_NAME, CONST_DEMOTION_NAME,
     DCE_NAME, FN_DEDUP_DEBUG_PROFILE_NAME, FN_INLINE_NAME, GLOBALS_DCE_NAME,
     INIT_AGGR_LOWERING_NAME, MEM2REG_NAME, MEMCPYOPT_NAME, MEMCPYPROP_REVERSE_NAME,
+    MEMCPY_PUSH_DOWN_NAME,
     MISC_DEMOTION_NAME, RET_DEMOTION_NAME, SIMPLIFY_CFG_NAME, SROA_NAME,
 };
 use sway_types::integer_bits::IntegerBits;
@@ -1660,6 +1661,7 @@ pub(crate) fn compile_ast_to_ir<'eng>(
         // Convert loads and stores to mem_copies where possible.
         pass_group.append_pass(ARG_POINTEE_MUTABILITY_TAGGER_NAME);
         pass_group.append_pass(MEMCPYOPT_NAME);
+        pass_group.append_pass(MEMCPY_PUSH_DOWN_NAME);
 
         // Run a DCE and simplify-cfg to clean up any obsolete instructions.
         pass_group.append_pass(DCE_NAME);

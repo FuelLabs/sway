@@ -11,7 +11,8 @@ use sway_ir::{
     create_arg_demotion_pass, create_arg_pointee_mutability_tagger_pass, create_ccp_pass,
     create_const_demotion_pass, create_const_folding_pass, create_cse_pass, create_dce_pass,
     create_dom_fronts_pass, create_dominators_pass, create_escaped_symbols_pass,
-    create_mem2reg_pass, create_memcpyopt_pass, create_memcpyprop_reverse_pass,
+    create_mem2reg_pass, create_memcpy_push_down_pass, create_memcpyopt_pass,
+    create_memcpyprop_reverse_pass,
     create_misc_demotion_pass, create_postorder_pass, create_ret_demotion_pass,
     create_simplify_cfg_pass, metadata_to_inline, optimize as opt, register_known_passes,
     Backtrace, Context, Function, IrError, Options, PassGroup, PassManager, Value,
@@ -535,6 +536,23 @@ fn memcpyopt() {
         pass_group.append_pass(mutability_tagger);
         pass_mgr.register(create_escaped_symbols_pass());
         let pass = pass_mgr.register(create_memcpyopt_pass());
+        pass_group.append_pass(pass);
+        run_passes_with_verify(&mut pass_mgr, ir, &pass_group)
+    })
+}
+
+// -------------------------------------------------------------------------------------------------
+
+#[allow(clippy::needless_collect)]
+#[test]
+fn memcpy_push_down() {
+    run_tests("memcpy_push_down", |_first_line, ir: &mut Context| {
+        let mut pass_mgr = PassManager::default();
+        let mut pass_group = PassGroup::default();
+        let mutability_tagger = pass_mgr.register(create_arg_pointee_mutability_tagger_pass());
+        pass_group.append_pass(mutability_tagger);
+        pass_mgr.register(create_escaped_symbols_pass());
+        let pass = pass_mgr.register(create_memcpy_push_down_pass());
         pass_group.append_pass(pass);
         run_passes_with_verify(&mut pass_mgr, ir, &pass_group)
     })
