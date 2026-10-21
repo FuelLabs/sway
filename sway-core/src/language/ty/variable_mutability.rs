@@ -7,6 +7,8 @@ pub enum VariableMutability {
     Mutable,
     // referenceable + mutable
     RefMutable,
+    // referenceable + immutable
+    RefImmutable,
     // immutable
     #[default]
     Immutable,
@@ -14,8 +16,10 @@ pub enum VariableMutability {
 
 impl VariableMutability {
     pub fn new_from_ref_mut(is_reference: bool, is_mutable: bool) -> VariableMutability {
-        if is_reference {
+        if is_reference && is_mutable {
             VariableMutability::RefMutable
+        } else if is_reference {
+            VariableMutability::RefImmutable
         } else if is_mutable {
             VariableMutability::Mutable
         } else {

@@ -1,0 +1,9 @@
+category = "fail"
+
+# ref without mut: parameter should be immutable inside the function body
+# check: $()x = 10;
+# nextln: $()cannot be assigned to, because it is an immutable variable
+
+# ref mut with immutable argument: should still require mutable arg
+# check: $()ref_mut_immutable_arg(y);
+# nextln: $()Cannot pass immutable argument to mutable parameter
