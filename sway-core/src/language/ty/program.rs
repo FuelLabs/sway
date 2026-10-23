@@ -260,7 +260,8 @@ impl TyProgram {
         // Perform other validation based on the tree type.
         let typed_program_kind = match kind {
             parsed::TreeType::Contract => {
-                // Types containing raw_ptr are not allowed in storage (e.g Vec)
+                // Types containing transaction-memory pointers or references are not allowed in
+                // storage. Persisting either would leave a dangling address after the call.
                 for decl in declarations.iter() {
                     if let TyDecl::StorageDecl(StorageDecl { decl_id }) = decl {
                         let storage_decl = decl_engine.get_storage(decl_id);
@@ -273,7 +274,7 @@ impl TyProgram {
                                     TypeInfo::StringSlice => {
                                         Some(TypeNotAllowedReason::StringSliceInConfigurables)
                                     }
-                                    TypeInfo::RawUntypedPtr => Some(
+                                    TypeInfo::RawUntypedPtr | TypeInfo::Ref { .. } => Some(
                                         TypeNotAllowedReason::TypeNotAllowedInContractStorage {
                                             ty: engines.help_out(t).to_string(),
                                         },
