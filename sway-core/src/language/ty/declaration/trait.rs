@@ -239,7 +239,13 @@ impl TypeCheckAnalysis for TyTraitItem {
             }
             TyTraitItem::Constant(node) => {
                 let item_const = decl_engine.get_constant(node);
-                item_const.type_check_analyze(handler, ctx)?;
+                let item_node = ctx.get_or_create_node_for_impl_item(self);
+                ctx.node_stack.push(item_node);
+
+                let result = item_const.type_check_analyze(handler, ctx);
+
+                ctx.node_stack.pop();
+                result?;
             }
             TyTraitItem::Type(node) => {
                 let item_type = decl_engine.get_type(node);
