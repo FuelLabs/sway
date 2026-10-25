@@ -57,6 +57,7 @@ impl Format for Literal {
                             LitIntType::I16 => "_i16",
                             LitIntType::I32 => "_i32",
                             LitIntType::I64 => "_i64",
+                            LitIntType::B256 => "_b256",
                         };
                         write!(formatted_code, "{int_type}")?;
                     }
