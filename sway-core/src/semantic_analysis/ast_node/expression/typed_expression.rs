@@ -1958,14 +1958,13 @@ impl ty::TyExpression {
             match item {
                 ty::TyTraitInterfaceItem::TraitFn(decl_ref) => {
                     let method = decl_engine.get_trait_fn(decl_ref);
-                    abi_items.push(TyImplItem::Fn(
-                        decl_engine
-                            .insert_dummy_func(method.to_dummy_func(
-                                AbiMode::ImplAbiFn(abi_name.suffix.clone(), Some(*abi_ref.id())),
-                                Some(return_type),
-                            ))
-                            .with_parent(decl_engine, (*decl_ref.id()).into()),
-                    ));
+                    abi_items.push(TyImplItem::Fn(decl_engine.insert_dummy_func(
+                        method.to_dummy_func(
+                            AbiMode::ImplAbiFn(abi_name.suffix.clone(), Some(*abi_ref.id())),
+                            Some(return_type),
+                        ),
+                        *decl_ref.id(),
+                    )));
                 }
                 ty::TyTraitInterfaceItem::Constant(decl_ref) => {
                     abi_items.push(TyImplItem::Constant(decl_ref.clone()));

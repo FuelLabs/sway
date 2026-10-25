@@ -11,6 +11,10 @@ pub(crate) const FLAGS_REGISTER: u8 = 0xF;
 /// 4. SCRATCH - used for certain operations which need a register temporarily, such as JMP.
 /// 5. LOCALS_BASE - base register for stack locals.
 /// 6. ARGS - for passing arguments to function calls.
+///
+/// Configurables are addressed relative to `$ds` via `AddrDataId` (near `ADDI` when the
+/// offset fits in Imm12, otherwise far `MOVI`+`ADD`). There is no dedicated configurable-
+/// section register.
 pub(crate) const DATA_SECTION_REGISTER: u8 = NUM_TOTAL_REGISTERS - 1;
 pub(crate) const RETURN_ADDRESS_REGISTER: u8 = NUM_TOTAL_REGISTERS - 2;
 pub(crate) const RETURN_VALUE_REGISTER: u8 = NUM_TOTAL_REGISTERS - 3;

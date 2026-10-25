@@ -7,7 +7,7 @@ experimental = { new_encoding = true, dynamic_storage = true }
 # nextln: $()Mismatched types.
 # nextln: $()expected: V
 # nextln: $()found:    K.
-# nextln: $()unction application argument type must match function parameter type.
+# nextln: $()Function call argument type must match function parameter type.
 
 # check: $()error
 # nextln: generics_in_contract/src/main.sw:19:22

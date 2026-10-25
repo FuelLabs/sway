@@ -7,6 +7,7 @@ use crate::{
             compiler_constants,
             data_section::{DataSection, Entry, EntryName},
             globals_section::GlobalsSection,
+            optimizations::optimize_fn_order,
             register_sequencer::RegisterSequencer,
         },
         ProgramKind,
@@ -121,13 +122,18 @@ impl AbstractProgram {
             .chain(self.non_entries);
 
         // Optimize and then verify abstract functions.
-        let abstract_functions = all_functions
-            .map(|instruction_set| instruction_set.optimize(&self.data_section, opt_level))
+        let mut optimized_fns = all_functions
+            .map(|f| f.optimize(&self.data_section, opt_level))
             .map(AbstractInstructionSet::verify)
             .collect::<Result<Vec<AbstractInstructionSet>, CompileError>>()?;
 
+        // Run only in release, as this increases compilation time considerably.
+        if matches!(opt_level, OptLevel::Opt1) {
+            optimize_fn_order(&mut optimized_fns);
+        }
+
         // Allocate the registers for each function.
-        let allocated_functions = abstract_functions
+        let allocated_functions = optimized_fns
             .into_iter()
             .map(|abstract_instruction_set| {
                 let allocated = abstract_instruction_set.allocate_registers()?;
@@ -198,65 +204,66 @@ impl AbstractProgram {
             "Inconsistency in the assumption of prelude organisation"
         );
         let label = self.reg_seqr.get_label();
+        let ops = vec![
+            AllocatedAbstractOp {
+                opcode: Either::Left(AllocatedInstruction::MOVE(
+                    AllocatedRegister::Constant(ConstantRegister::Scratch),
+                    AllocatedRegister::Constant(ConstantRegister::ProgramCounter),
+                )),
+                comment: String::new(),
+                owning_span: None,
+            },
+            // word 1.5
+            AllocatedAbstractOp {
+                opcode: Either::Right(ControlFlowOp::Jump {
+                    to: label,
+                    ty: JumpType::Unconditional,
+                }),
+                comment: String::new(),
+                owning_span: None,
+            },
+            // word 2 -- full word u64 placeholder
+            AllocatedAbstractOp {
+                opcode: Either::Right(ControlFlowOp::DataSectionOffsetPlaceholder),
+                comment: "data section offset".into(),
+                owning_span: None,
+            },
+            // word 3 -- full word u64 placeholder
+            AllocatedAbstractOp {
+                opcode: Either::Right(ControlFlowOp::ConfigurablesOffsetPlaceholder),
+                comment: "configurables offset".into(),
+                owning_span: None,
+            },
+            AllocatedAbstractOp {
+                opcode: Either::Right(ControlFlowOp::Label(label)),
+                comment: "end of configurables offset".into(),
+                owning_span: None,
+            },
+            // word 4 -- load the data offset into $ds
+            AllocatedAbstractOp {
+                opcode: Either::Left(AllocatedInstruction::LW(
+                    AllocatedRegister::Constant(ConstantRegister::DataSectionStart),
+                    AllocatedRegister::Constant(ConstantRegister::Scratch),
+                    VirtualImmediate12::new(1),
+                )),
+                comment: "".into(),
+                owning_span: None,
+            },
+            // word 4.5 -- add $ds $ds $is
+            AllocatedAbstractOp {
+                opcode: Either::Left(AllocatedInstruction::ADD(
+                    AllocatedRegister::Constant(ConstantRegister::DataSectionStart),
+                    AllocatedRegister::Constant(ConstantRegister::DataSectionStart),
+                    AllocatedRegister::Constant(ConstantRegister::Scratch),
+                )),
+                comment: "".into(),
+                owning_span: None,
+            },
+        ];
+
         AllocatedAbstractInstructionSet {
             function: None,
-            ops: [
-                AllocatedAbstractOp {
-                    opcode: Either::Left(AllocatedInstruction::MOVE(
-                        AllocatedRegister::Constant(ConstantRegister::Scratch),
-                        AllocatedRegister::Constant(ConstantRegister::ProgramCounter),
-                    )),
-                    comment: String::new(),
-                    owning_span: None,
-                },
-                // word 1.5
-                AllocatedAbstractOp {
-                    opcode: Either::Right(ControlFlowOp::Jump {
-                        to: label,
-                        type_: JumpType::Unconditional,
-                    }),
-                    comment: String::new(),
-                    owning_span: None,
-                },
-                // word 2 -- full word u64 placeholder
-                AllocatedAbstractOp {
-                    opcode: Either::Right(ControlFlowOp::DataSectionOffsetPlaceholder),
-                    comment: "data section offset".into(),
-                    owning_span: None,
-                },
-                // word 3 -- full word u64 placeholder
-                AllocatedAbstractOp {
-                    opcode: Either::Right(ControlFlowOp::ConfigurablesOffsetPlaceholder),
-                    comment: "configurables offset".into(),
-                    owning_span: None,
-                },
-                AllocatedAbstractOp {
-                    opcode: Either::Right(ControlFlowOp::Label(label)),
-                    comment: "end of configurables offset".into(),
-                    owning_span: None,
-                },
-                // word 4 -- load the data offset into $ds
-                AllocatedAbstractOp {
-                    opcode: Either::Left(AllocatedInstruction::LW(
-                        AllocatedRegister::Constant(ConstantRegister::DataSectionStart),
-                        AllocatedRegister::Constant(ConstantRegister::Scratch),
-                        VirtualImmediate12::new(1),
-                    )),
-                    comment: "".into(),
-                    owning_span: None,
-                },
-                // word 4.5 -- add $ds $ds $is
-                AllocatedAbstractOp {
-                    opcode: Either::Left(AllocatedInstruction::ADD(
-                        AllocatedRegister::Constant(ConstantRegister::DataSectionStart),
-                        AllocatedRegister::Constant(ConstantRegister::DataSectionStart),
-                        AllocatedRegister::Constant(ConstantRegister::Scratch),
-                    )),
-                    comment: "".into(),
-                    owning_span: None,
-                },
-            ]
-            .to_vec(),
+            ops,
         }
     }
 
@@ -266,7 +273,7 @@ impl AbstractProgram {
         asm.ops.push(AllocatedAbstractOp {
             opcode: Either::Right(ControlFlowOp::Jump {
                 to: entry.label,
-                type_: JumpType::Unconditional,
+                ty: JumpType::Unconditional,
             }),
             comment: "jump to ABI function selector".into(),
             owning_span: None,
@@ -352,7 +359,7 @@ impl AbstractProgram {
                 // If the comparison result is _not_ equal to 0, then it was indeed equal.
                 opcode: Either::Right(ControlFlowOp::Jump {
                     to: entry.label,
-                    type_: JumpType::NotZero(CMP_RESULT_REG),
+                    ty: JumpType::NotZero(CMP_RESULT_REG),
                 }),
                 comment: "[function selection]: jump to selected contract function".into(),
                 owning_span: None,
@@ -363,7 +370,7 @@ impl AbstractProgram {
             asm.ops.push(AllocatedAbstractOp {
                 opcode: Either::Right(ControlFlowOp::Jump {
                     to: fallback_fn,
-                    type_: JumpType::Call,
+                    ty: JumpType::Call,
                 }),
                 comment: "[function selection]: call contract fallback function".into(),
                 owning_span: None,

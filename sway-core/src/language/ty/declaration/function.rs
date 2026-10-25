@@ -439,10 +439,7 @@ impl DeclRefFunction {
             ));
 
             let decl_ref = if has_changes.has_changes() {
-                engines
-                    .de()
-                    .insert_modified(method.clone(), *self.id())
-                    .with_parent(decl_engine, self.id().into())
+                engines.de().insert_modified(method.clone(), *self.id())
             } else {
                 self.clone()
             };

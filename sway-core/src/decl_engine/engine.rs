@@ -67,7 +67,19 @@ pub struct DeclEngine {
     type_alias_parsed_decl_id_map:
         RwLock<HashMap<DeclId<TyTypeAliasDecl>, ParsedDeclId<TypeAliasDeclaration>>>,
 
-    parents: RwLock<HashMap<AssociatedItemDeclId, Vec<AssociatedItemDeclId>>>,
+    /// Maps a declaration of a [FunctionalDeclId] to the declarations it is derived from,
+    /// called the **parents** of the declaration.
+    ///
+    /// The parent links trace function ids referenced in function applications
+    /// back to the original declarations these ids are derived from.
+    ///
+    /// There are exactly two kinds of parent links:
+    /// - A trait-interface dummy function (see [DeclEngine::insert_dummy_func])
+    ///   is derived from the trait interface function ([ty::TyTraitFn]) it stands in for.
+    /// - A modified copy of a declaration (see [DeclEngineInsert::insert_modified]),
+    ///   e.g., a monomorphized version of a generic declaration, is derived from
+    ///   the original declaration.
+    parents: RwLock<HashMap<FunctionalDeclId, Vec<FunctionalDeclId>>>,
 }
 
 impl Clone for DeclEngine {
@@ -163,6 +175,10 @@ where
     /// declaration are the trait-interface dummy functions inserted via
     /// [DeclEngine::insert_dummy_func]. For those, [DeclEngineInsert] is implemented
     /// manually (see the implementation for [ty::TyFunctionDecl]).
+    ///
+    /// For [ty::TyFunctionDecl]s and [ty::TyTraitFn]s, the `original_decl` is automatically
+    /// registered as the parent of the `modified_decl`. Hence, both types have manual
+    /// implementations of [DeclEngineInsert].
     fn insert_modified(&self, modified_decl: T, original_decl: DeclId<T>) -> DeclRef<DeclId<T>>;
 }
 
@@ -244,10 +260,13 @@ macro_rules! decl_engine_insert {
 }
 
 /// [ty::TyFunctionDecl] is intentionally not implemented via the `decl_engine_insert!`
-/// macro. Unlike all other typed declarations, functions have one legitimate case of not
-/// having a corresponding parsed declaration: the trait-interface dummy functions inserted
-/// via [DeclEngine::insert_dummy_func]. `insert_modified` must therefore tolerate a missing
-/// parsed declaration, but **only for such dummy functions**.
+/// macro, for two reasons:
+/// - Unlike all other typed declarations, functions have one legitimate case of not
+///   having a corresponding parsed declaration: the trait-interface dummy functions inserted
+///   via [DeclEngine::insert_dummy_func]. `insert_modified` must therefore tolerate a missing
+///   parsed declaration, but **only for such dummy functions**.
+/// - `insert_modified` automatically registers the `original_decl` as the parent of the
+///   `modified_decl`.
 impl DeclEngineInsert<ty::TyFunctionDecl> for DeclEngine {
     fn insert(
         &self,
@@ -268,20 +287,59 @@ impl DeclEngineInsert<ty::TyFunctionDecl> for DeclEngine {
         modified_decl: ty::TyFunctionDecl,
         original_decl: DeclId<ty::TyFunctionDecl>,
     ) -> DeclRef<DeclId<ty::TyFunctionDecl>> {
-        match self.get_parsed_decl_id(&original_decl) {
+        let decl_ref = match self.get_parsed_decl_id(&original_decl) {
             // The `modified_decl` inherits the parsed declaration of the
             // `original_decl` it was cloned and modified from.
             Some(parsed_decl_id) => self.insert(modified_decl, parsed_decl_id),
             // The only functions that legitimately lack a parsed declaration are the
             // trait-interface dummy functions. If the `original_decl` had no parsed
-            // declaration and was not a dummy function, that is a bug.
-            None => self.insert_dummy_func(modified_decl),
-        }
+            // declaration and was not a dummy function, that is a bug and the below
+            // call will panic.
+            None => self.insert_function_without_parsed_decl(modified_decl),
+        };
+        // The `modified_decl` is derived from the `original_decl`. Register the
+        // `original_decl` as its parent.
+        self.register_parent((*decl_ref.id()).into(), original_decl.into());
+        decl_ref
+    }
+}
+
+/// [ty::TyTraitFn] is intentionally not implemented via the `decl_engine_insert!`
+/// macro, because, same as for [ty::TyFunctionDecl], `insert_modified` automatically
+/// registers the `original_decl` as the parent of the `modified_decl`.
+impl DeclEngineInsert<ty::TyTraitFn> for DeclEngine {
+    fn insert(
+        &self,
+        decl: ty::TyTraitFn,
+        parsed_decl_id: ParsedDeclId<<ty::TyTraitFn as TyDeclParsedType>::ParsedType>,
+    ) -> DeclRef<DeclId<ty::TyTraitFn>> {
+        let span = decl.span();
+        let decl_name = decl.name().clone();
+        let decl_id = DeclId::new(self.trait_fn_slab.insert(decl));
+        self.trait_fn_parsed_decl_id_map
+            .write()
+            .insert(decl_id, parsed_decl_id);
+        DeclRef::new(decl_name, decl_id, span)
+    }
+
+    fn insert_modified(
+        &self,
+        modified_decl: ty::TyTraitFn,
+        original_decl: DeclId<ty::TyTraitFn>,
+    ) -> DeclRef<DeclId<ty::TyTraitFn>> {
+        let decl_ref = self.insert(
+            modified_decl,
+            self.get_parsed_decl_id(&original_decl)
+                .expect("`original_decl` must have a corresponding parsed declaration"),
+        );
+        // The `modified_decl` is derived from the `original_decl`. Register the
+        // `original_decl` as its parent.
+        self.register_parent((*decl_ref.id()).into(), original_decl.into());
+        decl_ref
     }
 }
 
 decl_engine_insert!(trait_slab, trait_parsed_decl_id_map, ty::TyTraitDecl);
-decl_engine_insert!(trait_fn_slab, trait_fn_parsed_decl_id_map, ty::TyTraitFn);
 decl_engine_insert!(
     trait_type_slab,
     trait_type_parsed_decl_id_map,
@@ -476,17 +534,11 @@ macro_rules! decl_engine_clear_program {
             pub fn clear_program(&mut self, program_id: &ProgramId) {
                 self.parents.write().retain(|key, _| {
                     match key {
-                        AssociatedItemDeclId::TraitFn(decl_id) => {
+                        FunctionalDeclId::TraitFn(decl_id) => {
                             self.get_trait_fn(decl_id).span().source_id().map_or(true, |src_id| &src_id.program_id() != program_id)
                         },
-                        AssociatedItemDeclId::Function(decl_id) => {
+                        FunctionalDeclId::Function(decl_id) => {
                             self.get_function(decl_id).span().source_id().map_or(true, |src_id| &src_id.program_id() != program_id)
-                        },
-                        AssociatedItemDeclId::Type(decl_id) => {
-                            self.get_type(decl_id).span().source_id().map_or(true, |src_id| &src_id.program_id() != program_id)
-                        },
-                        AssociatedItemDeclId::Constant(decl_id) => {
-                            self.get_constant(decl_id).span().source_id().map_or(true, |src_id| &src_id.program_id() != program_id)
                         },
                     }
                 });
@@ -523,17 +575,11 @@ macro_rules! decl_engine_clear_module {
             pub fn clear_module(&mut self, source_id: &SourceId) {
                 self.parents.write().retain(|key, _| {
                     match key {
-                        AssociatedItemDeclId::TraitFn(decl_id) => {
+                        FunctionalDeclId::TraitFn(decl_id) => {
                             self.get_trait_fn(decl_id).span().source_id().map_or(true, |src_id| src_id != source_id)
                         },
-                        AssociatedItemDeclId::Function(decl_id) => {
+                        FunctionalDeclId::Function(decl_id) => {
                             self.get_function(decl_id).span().source_id().map_or(true, |src_id| src_id != source_id)
-                        },
-                        AssociatedItemDeclId::Type(decl_id) => {
-                            self.get_type(decl_id).span().source_id().map_or(true, |src_id| src_id != source_id)
-                        },
-                        AssociatedItemDeclId::Constant(decl_id) => {
-                            self.get_constant(decl_id).span().source_id().map_or(true, |src_id| src_id != source_id)
                         },
                     }
                 });
@@ -565,24 +611,27 @@ decl_engine_clear_module!(
 );
 
 impl DeclEngine {
-    /// Given a [DeclRef] `index`, finds all the parents of `index` and all the
+    /// Given a [DeclId] `index`, finds all the parents of `index` and all the
     /// recursive parents of those parents, and so on. Does not perform
-    /// duplicated computation---if the parents of a [DeclRef] have already been
-    /// found, we do not find them again.
+    /// duplicated computation. If a parent of a [DeclId] has already been
+    /// found, we do not find it again.
+    ///
+    /// See the documentation of the [DeclEngine::parents] field for the
+    /// explanation of parents.
     #[allow(clippy::map_entry)]
     pub(crate) fn find_all_parents<'a, T>(
         &self,
         engines: &Engines,
         index: &'a T,
-    ) -> Vec<AssociatedItemDeclId>
+    ) -> Vec<FunctionalDeclId>
     where
-        AssociatedItemDeclId: From<&'a T>,
+        FunctionalDeclId: From<&'a T>,
     {
-        let index: AssociatedItemDeclId = AssociatedItemDeclId::from(index);
+        let index: FunctionalDeclId = FunctionalDeclId::from(index);
         let parents = self.parents.read();
-        let mut acc_parents: HashMap<AssociatedItemDeclId, AssociatedItemDeclId> = HashMap::new();
-        let mut already_checked: HashSet<AssociatedItemDeclId> = HashSet::new();
-        let mut left_to_check: VecDeque<AssociatedItemDeclId> = VecDeque::from([index]);
+        let mut acc_parents: HashMap<FunctionalDeclId, FunctionalDeclId> = HashMap::new();
+        let mut already_checked: HashSet<FunctionalDeclId> = HashSet::new();
+        let mut left_to_check: VecDeque<FunctionalDeclId> = VecDeque::from([index]);
         while let Some(curr) = left_to_check.pop_front() {
             if !already_checked.insert(curr.clone()) {
                 continue;
@@ -594,15 +643,15 @@ impl DeclEngine {
                     }
                     if !left_to_check.iter().any(|x| match (x, curr_parent) {
                         (
-                            AssociatedItemDeclId::TraitFn(x_id),
-                            AssociatedItemDeclId::TraitFn(curr_parent_id),
+                            FunctionalDeclId::TraitFn(x_id),
+                            FunctionalDeclId::TraitFn(curr_parent_id),
                         ) => self.get(x_id).eq(
                             &self.get(curr_parent_id),
                             &PartialEqWithEnginesContext::new(engines),
                         ),
                         (
-                            AssociatedItemDeclId::Function(x_id),
-                            AssociatedItemDeclId::Function(curr_parent_id),
+                            FunctionalDeclId::Function(x_id),
+                            FunctionalDeclId::Function(curr_parent_id),
                         ) => self.get(x_id).eq(
                             &self.get(curr_parent_id),
                             &PartialEqWithEnginesContext::new(engines),
@@ -617,13 +666,13 @@ impl DeclEngine {
         acc_parents.values().cloned().collect()
     }
 
-    pub(crate) fn register_parent<I>(
-        &self,
-        index: AssociatedItemDeclId,
-        parent: AssociatedItemDeclId,
-    ) where
-        AssociatedItemDeclId: From<DeclId<I>>,
-    {
+    /// Registers the `parent` as a parent of the declaration `index`.
+    /// See [DeclEngine::parents] for the explanation of parents.
+    ///
+    /// This method is deliberately private to the [DeclEngine]. Parents are
+    /// registered automatically, as a part of inserting declarations via
+    /// [DeclEngineInsert::insert_modified] and [DeclEngine::insert_dummy_func].
+    fn register_parent(&self, index: FunctionalDeclId, parent: FunctionalDeclId) {
         let mut parents = self.parents.write();
         parents
             .entry(index)
@@ -631,7 +680,9 @@ impl DeclEngine {
             .or_insert_with(|| vec![parent]);
     }
 
-    /// Inserts a trait-interface **dummy function** into the [DeclEngine].
+    /// Inserts a trait-interface **dummy function** into the [DeclEngine]
+    /// and registers the trait interface function `interface_fn`, from which
+    /// the dummy function is created, as its parent.
     ///
     /// This is a bit of a maverick compared to the regular [DeclEngineInsert::insert].
     /// It deliberately inserts a [ty::TyFunctionDecl] **without an associated parsed
@@ -648,14 +699,40 @@ impl DeclEngine {
     /// [DeclEngineInsert::insert] or [DeclEngineInsert::insert_modified], which guarantee
     /// (and, for `insert_modified`, assert) the presence of a parsed declaration.
     ///
+    /// Registering the `interface_fn` as the parent is crucial. It allows the
+    /// references to the dummy function, e.g., calls to it within trait's provided
+    /// methods, to be traced back to the interface function, and thus replaced by
+    /// its actual implementation, once the implementation is known.
+    ///
     /// Panics if the `decl` is not a trait-interface dummy function.
     pub fn insert_dummy_func(
+        &self,
+        decl: ty::TyFunctionDecl,
+        interface_fn: DeclId<ty::TyTraitFn>,
+    ) -> DeclRef<DeclId<ty::TyFunctionDecl>> {
+        let decl_ref = self.insert_function_without_parsed_decl(decl);
+        // The dummy function is derived from the trait interface function.
+        // Register the `interface_fn` as its parent.
+        self.register_parent((*decl_ref.id()).into(), interface_fn.into());
+        decl_ref
+    }
+
+    /// Inserts a [ty::TyFunctionDecl] **without an associated parsed declaration**
+    /// and **without registering any parents**.
+    ///
+    /// The only functions that legitimately lack a parsed declaration are the
+    /// trait-interface dummy functions (see [DeclEngine::insert_dummy_func]),
+    /// either the initially created ones, or their modified versions inserted
+    /// via [DeclEngineInsert::insert_modified].
+    ///
+    /// Panics if the `decl` is not a trait-interface dummy function.
+    fn insert_function_without_parsed_decl(
         &self,
         decl: ty::TyFunctionDecl,
     ) -> DeclRef<DeclId<ty::TyFunctionDecl>> {
         assert!(
             decl.is_trait_method_dummy,
-            "`insert_dummy_func` must only be called with trait-interface dummy functions"
+            "only trait-interface dummy functions can be inserted without a corresponding parsed declaration"
         );
         let span = decl.span();
         let decl_name = decl.name().clone();

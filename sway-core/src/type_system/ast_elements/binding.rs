@@ -332,9 +332,7 @@ impl TypeCheckTypeBinding<ty::TyFunctionDecl> for TypeBinding<CallPath> {
                 )?;
 
                 let new_fn_ref = if has_changes.has_changes() {
-                    decl_engine
-                        .insert_modified(new_copy, *fn_ref.id())
-                        .with_parent(ctx.engines.de(), fn_ref.id().into())
+                    decl_engine.insert_modified(new_copy, *fn_ref.id())
                 } else {
                     fn_ref
                 };

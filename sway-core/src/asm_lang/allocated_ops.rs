@@ -13,7 +13,7 @@ use super::*;
 use crate::{
     asm_generation::fuel::{
         compiler_constants::{
-            DATA_SECTION_REGISTER, LOWER_ALLOCATABLE_REGISTER, TWELVE_BITS,
+            DATA_SECTION_REGISTER, EIGHTEEN_BITS, LOWER_ALLOCATABLE_REGISTER, TWELVE_BITS,
             UPPER_ALLOCATABLE_REGISTER,
         },
         data_section::{DataId, DataSection},
@@ -25,6 +25,7 @@ use fuel_vm::fuel_asm::{
     Imm12, Imm18,
 };
 use std::fmt::{self, Write};
+use sway_error::error::CompileError;
 use sway_types::span::Span;
 
 const COMMENT_START_COLUMN: usize = 30;
@@ -717,9 +718,9 @@ impl AllocatedOp {
         offset_to_data_section: u64,
         offset_from_instr_start: u64,
         data_section: &DataSection,
-    ) -> FuelAsmData {
+    ) -> Result<FuelAsmData, CompileError> {
         use AllocatedInstruction::*;
-        FuelAsmData::Instructions(vec![match &self.opcode {
+        Ok(FuelAsmData::Instructions(vec![match &self.opcode {
             /* Arithmetic/Logic (ALU) Instructions */
             ADD(a, b, c) => op::ADD::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
             ADDI(a, b, c) => op::ADDI::new(a.to_reg_id(), b.to_reg_id(), c.value().into()).into(),
@@ -946,70 +947,93 @@ impl AllocatedOp {
 
             /* Non-VM Instructions */
             BLOB(a) => {
-                return FuelAsmData::Instructions(
+                return Ok(FuelAsmData::Instructions(
                     std::iter::repeat_n(op::NOOP::new().into(), a.value() as usize).collect(),
-                )
+                ))
             }
             ConfigurablesOffsetPlaceholder => {
-                return FuelAsmData::ConfigurablesOffset([0, 0, 0, 0, 0, 0, 0, 0])
+                return Ok(FuelAsmData::ConfigurablesOffset([0, 0, 0, 0, 0, 0, 0, 0]))
             }
             DataSectionOffsetPlaceholder => {
-                return FuelAsmData::DataSectionOffset(offset_to_data_section.to_be_bytes())
+                return Ok(FuelAsmData::DataSectionOffset(
+                    offset_to_data_section.to_be_bytes(),
+                ))
             }
             LoadDataId(a, b) => {
-                return FuelAsmData::Instructions(realize_load(
+                return Ok(FuelAsmData::Instructions(realize_load(
                     a,
                     b,
                     data_section,
                     offset_to_data_section,
                     offset_from_instr_start,
-                ))
+                )))
             }
-            AddrDataId(a, b) => return FuelAsmData::Instructions(addr_of(a, b, data_section)),
+            AddrDataId(a, b) => {
+                return Ok(FuelAsmData::Instructions(addr_of(
+                    a,
+                    b,
+                    data_section,
+                    self.owning_span.clone().unwrap_or_else(Span::dummy),
+                )?))
+            }
             Undefined => unreachable!("Sway cannot generate undefined ASM opcodes"),
-        }])
+        }]))
     }
 }
 
 /// Address of a [DataSection] entry identified by `data_id`.
+///
+/// - Near: one `ADDI` from `$ds` when Imm12 fits.
+/// - Far: `MOVI` + `ADD $ds` when Imm18 fits but Imm12 does not.
+///
+/// Offsets larger than Imm18 cannot use the far form and yield
+/// [`CompileError::Immediate18TooLarge`]. A wider form (load the offset from the
+/// data section) is not implemented yet, because instruction sizes are fixed at
+/// jump-resolution time.
 fn addr_of(
     dest: &AllocatedRegister,
     data_id: &DataId,
     data_section: &DataSection,
-) -> Vec<fuel_asm::Instruction> {
+    err_span: Span,
+) -> Result<Vec<fuel_asm::Instruction>, CompileError> {
     let offset_bytes = data_section.data_id_to_offset(data_id) as u64;
 
-    // Note that the decision between the near (`ADDI`) and the far (`MOVI` + `ADD`)
-    // form must come from `addr_is_far`, and not from testing `offset_bytes` itself.
+    // The near vs far *size* decision must come from `addr_is_far`, not from
+    // testing `offset_bytes` here: sizes were fixed when jump labels were
+    // resolved. For configurables that decision uses the frozen worst-case
+    // offset, so far can be chosen even when the final offset would fit in
+    // Imm12. The actual offset never exceeds that worst case, so near remains
+    // realizable when chosen.
     //
-    // The decision defines the size of the instruction, and all the instruction sizes
-    // were fixed when the jump labels were resolved. For configurables the decision is
-    // made against their frozen worst-case offset, so the far form can be chosen even
-    // if the actual offset would fit in 12 bits. The actual offset can never exceed
-    // the worst-case one, so the near form is always emittable when chosen (and the
-    // far form is anyhow always emittable for any offset).
+    // The far form additionally requires the *actual* offset to fit in Imm18.
     if data_section.addr_is_far(data_id) {
-        vec![
+        if offset_bytes > EIGHTEEN_BITS {
+            return Err(CompileError::Immediate18TooLarge {
+                val: offset_bytes,
+                span: err_span,
+            });
+        }
+        Ok(vec![
             fuel_asm::Instruction::MOVI(MOVI::new(
                 dest.to_reg_id(),
-                Imm18::new(offset_bytes.try_into().unwrap()),
+                Imm18::new(offset_bytes as u32),
             )),
             fuel_asm::Instruction::ADD(ADD::new(
                 dest.to_reg_id(),
                 dest.to_reg_id(),
                 fuel_asm::RegId::new(DATA_SECTION_REGISTER),
             )),
-        ]
+        ])
     } else {
         assert!(
             offset_bytes <= TWELVE_BITS,
             "a near `AddrDataId` has the target offset {offset_bytes} that does not fit in 12 bits",
         );
-        vec![fuel_asm::Instruction::ADDI(ADDI::new(
+        Ok(vec![fuel_asm::Instruction::ADDI(ADDI::new(
             dest.to_reg_id(),
             fuel_asm::RegId::new(DATA_SECTION_REGISTER),
             Imm12::new(offset_bytes as u16),
-        ))]
+        ))])
     }
 }
 

@@ -312,14 +312,13 @@ impl ty::TyAbiDecl {
                                 }
                             }
                         }
-                        all_items.push(TyImplItem::Fn(
-                            decl_engine
-                                .insert_dummy_func(method.to_dummy_func(
-                                    AbiMode::ImplAbiFn(self.name.clone(), Some(self_decl_id)),
-                                    Some(type_id),
-                                ))
-                                .with_parent(ctx.engines.de(), (*decl_ref.id()).into()),
-                        ));
+                        all_items.push(TyImplItem::Fn(decl_engine.insert_dummy_func(
+                            method.to_dummy_func(
+                                AbiMode::ImplAbiFn(self.name.clone(), Some(self_decl_id)),
+                                Some(type_id),
+                            ),
+                            *decl_ref.id(),
+                        )));
                     }
                     ty::TyTraitInterfaceItem::Constant(decl_ref) => {
                         let const_decl = decl_engine.get_constant(decl_ref);

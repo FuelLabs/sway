@@ -284,9 +284,9 @@ impl AllocatedAbstractInstructionSet {
                     comment,
                 }),
                 Either::Right(org_op) => match org_op {
-                    ControlFlowOp::Jump { to, type_ } => {
+                    ControlFlowOp::Jump { to, ty } => {
                         let target_offset = label_offsets.get(&to).unwrap().offs;
-                        let ops = if matches!(type_, JumpType::Call) {
+                        let ops = if matches!(ty, JumpType::Call) {
                             compile_call(
                                 data_section,
                                 curr_offset,
@@ -300,7 +300,7 @@ impl AllocatedAbstractInstructionSet {
                                 data_section,
                                 curr_offset,
                                 target_offset,
-                                match type_ {
+                                match ty {
                                     JumpType::NotZero(cond) => Some(cond),
                                     _ => None,
                                 },
@@ -385,46 +385,6 @@ impl AllocatedAbstractInstructionSet {
     fn resolve_labels(&mut self, data_section: &mut DataSection) -> LabeledBlocks {
         let (far_jump_indices, _) = self.collect_far_jumps();
         self.map_label_offsets(data_section, &far_jump_indices)
-    }
-
-    // Returns largest size an instruction can take up.
-    // The return value is in concrete instructions, i.e. units of 4 bytes.
-    fn worst_case_instruction_size(op: &AllocatedAbstractOp) -> u64 {
-        use ControlFlowOp::*;
-        match op.opcode {
-            Either::Right(Label(_)) => 0,
-
-            // Loads from data section may take up to 2 instructions.
-            Either::Left(
-                AllocatedInstruction::LoadDataId(_, _) | AllocatedInstruction::AddrDataId(_, _),
-            ) => 2,
-
-            // Another special case for the blob opcode, used for testing.
-            Either::Left(AllocatedInstruction::BLOB(ref count)) => count.value() as u64,
-
-            // This is a concrete op, size is fixed.
-            Either::Left(_) => 1,
-
-            // Worst case for jump is 2 opcodes, and 3 for calls.
-            Either::Right(Jump { ref type_, .. }) => match type_ {
-                JumpType::Unconditional => 2,
-                JumpType::NotZero(_) => 2,
-                JumpType::Call => 3,
-            },
-            Either::Right(JumpToAddr(..)) => 1,
-            Either::Right(ReturnFromCall { .. }) => 1,
-            Either::Right(Comment) => 0,
-            Either::Right(DataSectionOffsetPlaceholder) => {
-                // If the placeholder is 32 bits, this is 1. If 64, this should be 2. We use LW
-                // to load the data, which loads a whole word, so for now this is 2.
-                2
-            }
-            Either::Right(ConfigurablesOffsetPlaceholder) => 2,
-            Either::Right(PushAll(_)) | Either::Right(PopAll(_)) => unreachable!(
-                "`PushAll` and `PopAll` don't belong in control flow ops \
-                        since they're not about control flow"
-            ),
-        }
     }
 
     // Actual size of an instruction.
@@ -542,7 +502,7 @@ impl AllocatedAbstractInstructionSet {
             }
 
             // Update the offset.
-            cur_offset += Self::worst_case_instruction_size(op);
+            cur_offset += op.worst_case_instruction_size();
         }
 
         // Don't forget the final block.
@@ -553,13 +513,13 @@ impl AllocatedAbstractInstructionSet {
         for jump in jumps {
             let offs = labelled_blocks.get(&jump.to).unwrap().offs;
             let rel_offset = offs.abs_diff(jump.offset);
-            let Either::Right(ControlFlowOp::Jump { ref type_, .. }) = self.ops[jump.op_idx].opcode
+            let Either::Right(ControlFlowOp::Jump { ref ty, .. }) = self.ops[jump.op_idx].opcode
             else {
                 unreachable!("Jump info should only be collected for jumps");
             };
             // Relative self jumps need a NOOP inserted before it so that we can jump to the NOOP.
             let is_self_jump = rel_offset == 0;
-            match type_ {
+            match ty {
                 JumpType::Unconditional => {
                     // Unconditional jumps have 18-bit immediate offset.
                     if is_self_jump || rel_offset > consts::EIGHTEEN_BITS {

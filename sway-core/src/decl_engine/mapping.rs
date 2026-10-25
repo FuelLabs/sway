@@ -8,20 +8,28 @@ use crate::{
     Engines, TypeId, UnifyCheck,
 };
 
-use super::{AssociatedItemDeclId, InterfaceItemMap, ItemMap};
+use super::{FunctionalDeclId, InterfaceItemMap, ItemMap};
 
-type SourceDecl = (AssociatedItemDeclId, TypeId);
-type DestinationDecl = AssociatedItemDeclId;
+type SourceDecl = (FunctionalDeclId, TypeId);
+type DestinationDecl = FunctionalDeclId;
 
 /// The [DeclMapping] is used to create a mapping between a [SourceDecl] (LHS)
 /// and a [DestinationDecl] (RHS).
 ///
 /// Note that [DeclMapping] is **not a mapping of arbitrary `DeclId`s**.
-/// Its whole domain is [AssociatedItemDeclId], which is only trait/impl associated items:
-/// functions, constants and associated types. [DeclMapping] maps a trait interface
-/// item reference to its concrete impl counterpart.
-/// For concrete swaps of trait interface item references with their concrete impls,
-/// see [find_match], which is the final step of the trait-method monomorphization.
+/// Its whole domain is [FunctionalDeclId], which is only the function-like
+/// trait/impl associated items: trait interface functions and functions.
+/// [DeclMapping] maps a trait interface function reference to its concrete
+/// impl counterpart.
+///
+/// For concrete swaps of trait interface function references with their concrete
+/// impls, see [find_match], which is the final step of the trait-method
+/// monomorphization.
+///
+/// Constants and associated types, although also being trait/impl associated
+/// items, are deliberately not mapped. They are resolved by different means:
+/// constants by name and associated types via the type substitution within
+/// the [crate::TypeEngine].
 #[derive(Clone)]
 pub struct DeclMapping {
     pub mapping: Vec<(SourceDecl, DestinationDecl)>,
@@ -39,10 +47,8 @@ impl fmt::Display for DeclMapping {
                         "{} -> {}",
                         source_type.0,
                         match dest_type {
-                            AssociatedItemDeclId::TraitFn(decl_id) => decl_id.inner(),
-                            AssociatedItemDeclId::Function(decl_id) => decl_id.inner(),
-                            AssociatedItemDeclId::Constant(decl_id) => decl_id.inner(),
-                            AssociatedItemDeclId::Type(decl_id) => decl_id.inner(),
+                            FunctionalDeclId::TraitFn(decl_id) => decl_id.inner(),
+                            FunctionalDeclId::Function(decl_id) => decl_id.inner(),
                         }
                     )
                 })
@@ -96,36 +102,32 @@ impl DeclMapping {
         let mut mapping: Vec<(SourceDecl, DestinationDecl)> = vec![];
         for (interface_decl_name, interface_item) in interface_decl_refs.into_iter() {
             if let Some(new_item) = impld_decl_refs.get(&interface_decl_name) {
+                // Only functions are mapped. Constants and associated types are
+                // resolved by different means. See the [DeclMapping] documentation.
                 let interface_decl_ref = match interface_item {
                     TyTraitInterfaceItem::TraitFn(decl_ref) => {
                         (decl_ref.id().into(), interface_decl_name.1)
                     }
-                    TyTraitInterfaceItem::Constant(decl_ref) => {
-                        (decl_ref.id().into(), interface_decl_name.1)
-                    }
-                    TyTraitInterfaceItem::Type(decl_ref) => {
-                        (decl_ref.id().into(), interface_decl_name.1)
-                    }
+                    TyTraitInterfaceItem::Constant(_) | TyTraitInterfaceItem::Type(_) => continue,
                 };
                 let new_decl_ref = match new_item {
                     TyTraitItem::Fn(decl_ref) => decl_ref.id().into(),
-                    TyTraitItem::Constant(decl_ref) => decl_ref.id().into(),
-                    TyTraitItem::Type(decl_ref) => decl_ref.id().into(),
+                    TyTraitItem::Constant(_) | TyTraitItem::Type(_) => continue,
                 };
                 mapping.push((interface_decl_ref, new_decl_ref));
             }
         }
         for (decl_name, item) in item_decl_refs.into_iter() {
             if let Some(new_item) = impld_decl_refs.get(&decl_name) {
+                // Only functions are mapped. Constants and associated types are
+                // resolved by different means. See the [DeclMapping] documentation.
                 let interface_decl_ref = match item {
                     TyTraitItem::Fn(decl_ref) => (decl_ref.id().into(), decl_name.1),
-                    TyTraitItem::Constant(decl_ref) => (decl_ref.id().into(), decl_name.1),
-                    TyTraitItem::Type(decl_ref) => (decl_ref.id().into(), decl_name.1),
+                    TyTraitItem::Constant(_) | TyTraitItem::Type(_) => continue,
                 };
                 let new_decl_ref = match new_item {
                     TyTraitItem::Fn(decl_ref) => decl_ref.id().into(),
-                    TyTraitItem::Constant(decl_ref) => decl_ref.id().into(),
-                    TyTraitItem::Type(decl_ref) => decl_ref.id().into(),
+                    TyTraitItem::Constant(_) | TyTraitItem::Type(_) => continue,
                 };
                 mapping.push((interface_decl_ref, new_decl_ref));
             }
@@ -137,7 +139,7 @@ impl DeclMapping {
         &self,
         _handler: &Handler,
         engines: &Engines,
-        decl_ref: AssociatedItemDeclId,
+        decl_ref: FunctionalDeclId,
         typeid: Option<TypeId>,
         self_typeid: Option<TypeId>,
     ) -> Result<Option<DestinationDecl>, ErrorEmitted> {

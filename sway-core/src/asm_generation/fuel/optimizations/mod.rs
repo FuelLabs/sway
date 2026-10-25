@@ -1,8 +1,11 @@
 mod const_indexed_aggregates;
 mod constant_propagate;
+mod fn_order;
 mod misc;
 mod reachability;
 mod verify;
+
+pub(crate) use fn_order::optimize_fn_order;
 
 use std::cmp::Ordering;
 
