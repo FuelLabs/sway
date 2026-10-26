@@ -1,0 +1,36 @@
+---
+source: sway-ir/tests/tests.rs
+---
+Modified: false
+
+script {
+    entry fn main(order: __ptr { u64, u64 }) -> u64 {
+        local mut { u64, u64 } order_copy
+
+        entry(order: __ptr { u64, u64 }):
+        v2v1 = get_local __ptr { u64, u64 }, order_copy
+        mem_copy_val v2v1, order
+        v4v1 = call poke_mut(v2v1)
+        v5v1 = get_local __ptr { u64, u64 }, order_copy
+        v6v1 = call consume_read_only(v5v1)
+        ret u64 v6v1
+    }
+
+    fn poke_mut(order: __ptr { u64, u64 }) -> () {
+        entry(mut order: __ptr { u64, u64 }):
+        v9v1 = const u64 0
+        v10v1 = get_elem_ptr order, __ptr u64, v9v1
+        v11v1 = const u64 1
+        store v11v1 to v10v1
+        v13v1 = const unit ()
+        ret () v13v1
+    }
+
+    fn consume_read_only(order: __ptr { u64, u64 }) -> u64 {
+        entry(order: __ptr { u64, u64 }):
+        v16v1 = const u64 0
+        v17v1 = get_elem_ptr order, __ptr u64, v16v1
+        v18v1 = load v17v1
+        ret u64 v18v1
+    }
+}

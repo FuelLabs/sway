@@ -1,0 +1,70 @@
+// LIMIT: pending region must not touch a CFG cycle.
+//
+// Why: sinking / leaving a logical copy pending across a backedge could
+// re-execute a materialized copy every iteration, or require loop-aware
+// reasoning this pass does not do.
+//
+// ```sway
+// fn main(n: u64, order: Order) -> u64 {
+//     let mut order_copy = order;
+//     let mut i = 0;
+//     let mut acc = 0;
+//     while i < n {
+//         acc = consume_read_only(order_copy);
+//         i = i + 1;
+//     }
+//     acc
+// }
+// ```
+//
+// Expected from memcpy-push-down: opt does nothing —
+//   A = the entry `mem_copy_val` stays put.
+script {
+    entry fn main(n: u64, order: __ptr { u64, u64 }) -> u64 {
+        local mut { u64, u64 } order_copy
+        local mut u64 i
+        local mut u64 acc
+
+        entry(n: u64, order: __ptr { u64, u64 }):
+        v0 = get_local __ptr { u64, u64 }, order_copy
+        mem_copy_val v0, order // <------------------ A (must stay)
+        v1 = get_local __ptr u64, i
+        v2 = const u64 0
+        store v2 to v1
+        v3 = get_local __ptr u64, acc
+        v4 = const u64 0
+        store v4 to v3
+        br while()
+
+        while():
+        v5 = get_local __ptr u64, i
+        v6 = load v5
+        v7 = cmp lt v6 n
+        cbr v7, while_body(), end_while()
+
+        while_body():
+        v8 = get_local __ptr { u64, u64 }, order_copy
+        v9 = call consume_read_only(v8)
+        v10 = get_local __ptr u64, acc
+        store v9 to v10
+        v11 = get_local __ptr u64, i
+        v12 = load v11
+        v13 = const u64 1
+        v14 = add v12, v13
+        store v14 to v11
+        br while()
+
+        end_while():
+        v15 = get_local __ptr u64, acc
+        v16 = load v15
+        ret u64 v16
+    }
+
+    fn consume_read_only(order: __ptr { u64, u64 }) -> u64 {
+        entry(order: __ptr { u64, u64 }):
+        v0 = const u64 0
+        v1 = get_elem_ptr order, __ptr u64, v0
+        v2 = load v1
+        ret u64 v2
+    }
+}

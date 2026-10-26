@@ -1,0 +1,39 @@
+// SOUNDNESS: `contract_call` params involving `dst` are opaque — bail.
+//
+// Expected: entry `mem_copy_val` stays put.
+script {
+    entry fn main(flag: bool, params_src: __ptr { b256, u64, u64 }, asset: __ptr b256) -> u64 {
+        local mut { b256, u64, u64 } params_copy
+
+        entry(flag: bool, params_src: __ptr { b256, u64, u64 }, asset: __ptr b256):
+        v0 = get_local __ptr { b256, u64, u64 }, params_copy
+        mem_copy_val v0, params_src // <------------------ must stay
+        v1 = get_local __ptr { b256, u64, u64 }, params_copy
+        v2 = const u64 0
+        v3 = const u64 100
+        v4 = contract_call u64 poke v1, v2, asset, v3
+        cbr flag, block_write(), block_read()
+
+        block_write():
+        v5 = get_local __ptr { b256, u64, u64 }, params_copy
+        v6 = const u64 1
+        v7 = get_elem_ptr v5, __ptr u64, v6
+        v8 = const u64 42
+        store v8 to v7
+        v9 = get_local __ptr { b256, u64, u64 }, params_copy
+        v10 = const u64 1
+        v11 = get_elem_ptr v9, __ptr u64, v10
+        v12 = load v11
+        br block_join(v12)
+
+        block_read():
+        v13 = get_local __ptr { b256, u64, u64 }, params_copy
+        v14 = const u64 1
+        v15 = get_elem_ptr v13, __ptr u64, v14
+        v16 = load v15
+        br block_join(v16)
+
+        block_join(v17: u64):
+        ret u64 v17
+    }
+}

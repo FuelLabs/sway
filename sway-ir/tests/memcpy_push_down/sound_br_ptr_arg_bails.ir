@@ -1,0 +1,38 @@
+// SOUNDNESS: branching with a `dst` pointer as a block argument is an
+// unclassified ptr operand (and would defeat `analyze_ptr_chain`); bail.
+//
+// Expected: entry `mem_copy_val` stays put.
+script {
+    entry fn main(flag: bool, order: __ptr { u64, u64 }) -> u64 {
+        local mut { u64, u64 } order_copy
+
+        entry(flag: bool, order: __ptr { u64, u64 }):
+        v0 = get_local __ptr { u64, u64 }, order_copy
+        mem_copy_val v0, order // <------------------ must stay
+        v1 = get_local __ptr { u64, u64 }, order_copy
+        cbr flag, block_write(v1), block_read(v1)
+
+        block_write(p: __ptr { u64, u64 }):
+        v2 = const u64 1
+        v3 = get_elem_ptr p, __ptr u64, v2
+        v4 = const u64 42
+        store v4 to v3
+        v5 = call consume_read_only(p)
+        br block_join(v5)
+
+        block_read(p: __ptr { u64, u64 }):
+        v6 = call consume_read_only(p)
+        br block_join(v6)
+
+        block_join(v7: u64):
+        ret u64 v7
+    }
+
+    fn consume_read_only(order: __ptr { u64, u64 }) -> u64 {
+        entry(order: __ptr { u64, u64 }):
+        v0 = const u64 0
+        v1 = get_elem_ptr order, __ptr u64, v0
+        v2 = load v1
+        ret u64 v2
+    }
+}

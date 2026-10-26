@@ -1,0 +1,49 @@
+// SOUNDNESS: storing the destination pointer itself captures it — the pass
+// must refuse to touch the candidate (an invisible later write through the
+// captured pointer could break pending delegation).
+//
+// ```sway
+// fn main(flag: bool, order: Order) -> u64 {
+//     let mut order_copy = order;
+//     let slot: &mut Order = &mut order_copy; // capture (IR: store ptr)
+//     if flag { order_copy.prev = 42; }
+//     consume_read_only(order_copy)
+// }
+// ```
+//
+// Expected: entry `mem_copy_val` stays put (bail).
+script {
+    entry fn main(flag: bool, order: __ptr { u64, u64 }) -> u64 {
+        local mut { u64, u64 } order_copy
+        local mut __ptr { u64, u64 } slot
+
+        entry(flag: bool, order: __ptr { u64, u64 }):
+        v0 = get_local __ptr { u64, u64 }, order_copy
+        mem_copy_val v0, order // <------------------ must stay
+        v1 = get_local __ptr { u64, u64 }, order_copy
+        v2 = get_local __ptr __ptr { u64, u64 }, slot
+        store v1 to v2 // captures the pointer identity of `order_copy`
+        cbr flag, block_write(), block_join()
+
+        block_write():
+        v3 = get_local __ptr { u64, u64 }, order_copy
+        v4 = const u64 1
+        v5 = get_elem_ptr v3, __ptr u64, v4
+        v6 = const u64 42
+        store v6 to v5
+        br block_join()
+
+        block_join():
+        v7 = get_local __ptr { u64, u64 }, order_copy
+        v8 = call consume_read_only(v7)
+        ret u64 v8
+    }
+
+    fn consume_read_only(order: __ptr { u64, u64 }) -> u64 {
+        entry(order: __ptr { u64, u64 }):
+        v0 = const u64 0
+        v1 = get_elem_ptr order, __ptr u64, v0
+        v2 = load v1
+        ret u64 v2
+    }
+}

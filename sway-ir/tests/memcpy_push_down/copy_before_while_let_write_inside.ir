@@ -1,0 +1,115 @@
+// ```sway
+// script;
+//
+// struct Order {
+//     a: u64,
+//     prev: u64,
+// }
+//
+// #[inline(never)]
+// fn consume_read_only(order: Order) -> u64 {
+//     order.a
+// }
+//
+// fn next(cursor: u64) -> Option<u64> {
+//     if cursor < 3 { Option::Some(cursor) } else { Option::None }
+// }
+//
+// fn main(order: Order) -> u64 {
+//     let mut order_copy = order;
+//     let mut cursor = 0;
+//     while let Option::Some(x) = next(cursor) {
+//         order_copy.prev = x;
+//         cursor = cursor + 1;
+//     }
+//     consume_read_only(order_copy)
+// }
+// ```
+//
+// Same CFG family as `copy_before_loop_write_inside`: pending would cross a
+// cycle, so the pass must bail.
+//
+// Expected from memcpy-push-down:
+//   A = the entry `mem_copy_val` stays put (bail: pending would cross the loop).
+script {
+    entry fn main(order: __ptr { u64, u64 }) -> u64 {
+        local mut { u64, u64 } order_copy
+        local mut u64 cursor
+        local mut { u64, u64 } opt
+
+        entry(order: __ptr { u64, u64 }):
+        v0 = get_local __ptr { u64, u64 }, order_copy
+        mem_copy_val v0, order // <------------------ A
+        v1 = get_local __ptr u64, cursor
+        v2 = const u64 0
+        store v2 to v1
+        br while()
+
+        while():
+        v3 = get_local __ptr u64, cursor
+        v4 = load v3
+        v5 = get_local __ptr { u64, u64 }, opt
+        v6 = call next(v4, v5)
+        v7 = const u64 0
+        v8 = get_elem_ptr v5, __ptr u64, v7
+        v9 = load v8
+        v10 = const u64 0
+        v11 = cmp eq v9 v10
+        cbr v11, while_body(), end_while()
+
+        while_body():
+        v12 = const u64 1
+        v13 = get_elem_ptr v5, __ptr u64, v12
+        v14 = load v13
+        v15 = get_local __ptr { u64, u64 }, order_copy
+        v16 = const u64 1
+        v17 = get_elem_ptr v15, __ptr u64, v16
+        store v14 to v17 // Write inside the `while let` body.
+        v18 = get_local __ptr u64, cursor
+        v19 = load v18
+        v20 = const u64 1
+        v21 = add v19, v20
+        store v21 to v18
+        br while()
+
+        end_while():
+        v22 = get_local __ptr { u64, u64 }, order_copy
+        v23 = call consume_read_only(v22)
+        ret u64 v23
+    }
+
+    // Writes `Option` into `out`: tag 0 = Some(cursor) when cursor < 3, else None.
+    fn next(cursor: u64, out: __ptr { u64, u64 }) -> () {
+        entry(cursor: u64, out: __ptr { u64, u64 }):
+        v0 = const u64 3
+        v1 = cmp lt cursor v0
+        cbr v1, some(), none()
+
+        some():
+        v2 = const u64 0
+        v3 = get_elem_ptr out, __ptr u64, v2
+        v4 = const u64 0
+        store v4 to v3
+        v5 = const u64 1
+        v6 = get_elem_ptr out, __ptr u64, v5
+        store cursor to v6
+        v7 = const unit ()
+        ret () v7
+
+        none():
+        v8 = const u64 0
+        v9 = get_elem_ptr out, __ptr u64, v8
+        v10 = const u64 1
+        store v10 to v9
+        v11 = const unit ()
+        ret () v11
+    }
+
+    fn consume_read_only(order: __ptr { u64, u64 }) -> u64 {
+        entry(order: __ptr { u64, u64 }):
+        v0 = const u64 0
+        v1 = get_elem_ptr order, __ptr u64, v0
+        v2 = load v1
+        ret u64 v2
+    }
+}

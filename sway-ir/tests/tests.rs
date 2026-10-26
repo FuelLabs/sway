@@ -11,11 +11,11 @@ use sway_ir::{
     create_arg_demotion_pass, create_arg_pointee_mutability_tagger_pass, create_ccp_pass,
     create_const_demotion_pass, create_const_folding_pass, create_cse_pass, create_dce_pass,
     create_dom_fronts_pass, create_dominators_pass, create_escaped_symbols_pass,
-    create_mem2reg_pass, create_memcpyopt_pass, create_memcpyprop_reverse_pass,
-    create_misc_demotion_pass, create_postorder_pass, create_ret_demotion_pass,
-    create_simplify_cfg_pass, metadata_to_inline, optimize as opt, register_known_passes,
-    Backtrace, Context, Function, IrError, Options, PassGroup, PassManager, Value,
-    FN_DEDUP_DEBUG_PROFILE_NAME, FN_DEDUP_RELEASE_PROFILE_NAME, GLOBALS_DCE_NAME, SROA_NAME,
+    create_mem2reg_pass, create_memcpy_push_down_pass, create_memcpyopt_pass,
+    create_memcpyprop_reverse_pass, create_misc_demotion_pass, create_postorder_pass,
+    create_ret_demotion_pass, create_simplify_cfg_pass, metadata_to_inline, optimize as opt,
+    register_known_passes, Backtrace, Context, Function, IrError, Options, PassGroup, PassManager,
+    Value, FN_DEDUP_DEBUG_PROFILE_NAME, FN_DEDUP_RELEASE_PROFILE_NAME, GLOBALS_DCE_NAME, SROA_NAME,
 };
 use sway_types::SourceEngine;
 
@@ -64,6 +64,17 @@ fn clean_output(output: &str) -> String {
 }
 
 fn run_tests<F: Fn(&str, &mut Context) -> (bool, String)>(sub_dir: &str, opt_fn: F) {
+    run_tests_with_setup(sub_dir, |_ir| {}, opt_fn)
+}
+
+/// Like [`run_tests`], but runs `setup` on the parsed IR *before* the snapshot
+/// baseline is taken. Use this when a prerequisite pass must warm up analysis
+/// state (e.g. arg mutability tags) without tainting `Modified:` or the diff.
+fn run_tests_with_setup<S, F>(sub_dir: &str, mut setup: S, opt_fn: F)
+where
+    S: FnMut(&mut Context),
+    F: Fn(&str, &mut Context) -> (bool, String),
+{
     let mut err: Option<Box<dyn Any + Send>> = None;
 
     let source_engine = SourceEngine::default();
@@ -96,6 +107,8 @@ fn run_tests<F: Fn(&str, &mut Context) -> (bool, String)>(sub_dir: &str, opt_fn:
             });
 
         let first_line = input.split('\n').next().unwrap();
+
+        setup(&mut ir);
 
         let before = ir.to_string();
         let (r, log) = opt_fn(first_line, &mut ir);
@@ -538,6 +551,34 @@ fn memcpyopt() {
         pass_group.append_pass(pass);
         run_passes_with_verify(&mut pass_mgr, ir, &pass_group)
     })
+}
+
+// -------------------------------------------------------------------------------------------------
+
+#[allow(clippy::needless_collect)]
+#[test]
+fn memcpy_push_down() {
+    // Run the arg-mutability tagger as setup (needed so read-only callees are
+    // classified correctly), then measure *only* memcpy-push-down. The snapshot
+    // baseline is taken after setup, so `Modified:` / the diff are not tainted
+    // by the tagger flipping `mut` off pointer args.
+    run_tests_with_setup(
+        "memcpy_push_down",
+        |ir: &mut Context| {
+            let mut pass_mgr = PassManager::default();
+            let mut pass_group = PassGroup::default();
+            let mutability_tagger = pass_mgr.register(create_arg_pointee_mutability_tagger_pass());
+            pass_group.append_pass(mutability_tagger);
+            let _ = run_passes_with_verify(&mut pass_mgr, ir, &pass_group);
+        },
+        |_first_line, ir: &mut Context| {
+            let mut pass_mgr = PassManager::default();
+            let mut pass_group = PassGroup::default();
+            let pass = pass_mgr.register(create_memcpy_push_down_pass());
+            pass_group.append_pass(pass);
+            run_passes_with_verify(&mut pass_mgr, ir, &pass_group)
+        },
+    )
 }
 
 // -------------------------------------------------------------------------------------------------

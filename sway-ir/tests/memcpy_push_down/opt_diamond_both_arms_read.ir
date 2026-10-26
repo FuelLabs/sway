@@ -1,0 +1,38 @@
+// CORRECTNESS: both arms only read while pending — delete the copy and
+// delegate both reads; no materialization at the (dead) join.
+//
+// Expected:
+//   A = entry copy disappears,
+//   B/C = both arms call consume on `order`,
+//   D = nothing copied at the join.
+script {
+    entry fn main(flag: bool, order: __ptr { u64, u64 }) -> u64 {
+        local mut { u64, u64 } order_copy
+
+        entry(flag: bool, order: __ptr { u64, u64 }):
+        v0 = get_local __ptr { u64, u64 }, order_copy
+        mem_copy_val v0, order // <------------------ A
+        cbr flag, block_left(), block_right()
+
+        block_left():
+        v1 = get_local __ptr { u64, u64 }, order_copy
+        v2 = call consume_read_only(v1) // <------------------ B
+        br block_join(v2)
+
+        block_right():
+        v3 = get_local __ptr { u64, u64 }, order_copy
+        v4 = call consume_read_only(v3) // <------------------ C
+        br block_join(v4)
+
+        block_join(v5: u64): // <------------------ D
+        ret u64 v5
+    }
+
+    fn consume_read_only(order: __ptr { u64, u64 }) -> u64 {
+        entry(order: __ptr { u64, u64 }):
+        v0 = const u64 0
+        v1 = get_elem_ptr order, __ptr u64, v0
+        v2 = load v1
+        ret u64 v2
+    }
+}

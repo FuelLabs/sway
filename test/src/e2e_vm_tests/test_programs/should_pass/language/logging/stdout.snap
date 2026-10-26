@@ -29,14 +29,14 @@ script {
     entry_orig fn main_0() -> u64, !16 {
         local { ptr, u64 } __anon_0
         local slice __anon_1
+        local { u64, ( { u64 } | () ) } __anon_2
+        local { u64, ( { u64 } | () ) } __anon_3
         local u256 __const = const u256 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+        local { u64, u64, u64, u8, { { ptr, u64 }, u64 }, slice, u256 } __struct_init_0
         local { ptr, u64 } __struct_init_000
+        local { u64 } __struct_init_1
         local { u64 } __struct_init_2
-        local { u64, u64, u64, u8, { { ptr, u64 }, u64 }, slice, u256 } __tmp_arg
-        local { u64 } __tmp_arg0
-        local { u64, ( { u64 } | () ) } __tmp_arg1
-        local { u64, ( { u64 } | () ) } __tmp_arg2
-        local {  } __tmp_arg3
+        local {  } __struct_init_3
         local mut { { ptr, u64 }, u64 } e
 
         entry():
@@ -67,7 +67,7 @@ script {
         v488v1 = call push_11(v3560v1, v487v1), !52
         v491v1 = const u64 3, !53
         v492v1 = call push_11(v3560v1, v491v1), !56
-        v1063v1 = get_local __ptr { u64, u64, u64, u8, { { ptr, u64 }, u64 }, slice, u256 }, __tmp_arg, !57
+        v1063v1 = get_local __ptr { u64, u64, u64, u8, { { ptr, u64 }, u64 }, slice, u256 }, __struct_init_0, !57
         v1071v1 = get_global __ptr string<4>, __const_global
         v1072v1 = cast_ptr v1071v1 to ptr, !58
         v1074v1 = get_local __ptr { ptr, u64 }, __anon_0, !58
@@ -106,13 +106,13 @@ script {
         v1434v1 = get_elem_ptr v1063v1, __ptr u256, v1433v1, !57
         mem_copy_val v1434v1, v3585v1
         v3622v1 = call local_log_21(v1063v1)
-        v1160v1 = get_local __ptr { u64 }, __tmp_arg0, !63
+        v1160v1 = get_local __ptr { u64 }, __struct_init_1, !63
         v1412v1 = const u64 0
         v1413v1 = get_elem_ptr v1160v1, __ptr u64, v1412v1, !63
         v1161v1 = const u64 1, !64
         store v1161v1 to v1413v1, !63
         v3633v1 = call local_log_46(v1160v1)
-        v1288v1 = get_local __ptr { u64, ( { u64 } | () ) }, __tmp_arg1, !65
+        v1288v1 = get_local __ptr { u64, ( { u64 } | () ) }, __anon_2, !65
         v1289v1 = const u64 0
         v1290v1 = get_elem_ptr v1288v1, __ptr u64, v1289v1, !65
         v1287v1 = const u64 0, !65
@@ -127,27 +127,27 @@ script {
         v1298v1 = get_elem_ptr v1288v1, __ptr { u64 }, v1296v1, v1297v1, !65
         mem_copy_val v1298v1, v1292v1
         v3647v1 = call local_log_51(v1288v1)
-        v1303v1 = get_local __ptr { u64, ( { u64 } | () ) }, __tmp_arg2, !65
+        v1303v1 = get_local __ptr { u64, ( { u64 } | () ) }, __anon_3, !65
         v1304v1 = const u64 0
         v1305v1 = get_elem_ptr v1303v1, __ptr u64, v1304v1, !65
         v1302v1 = const u64 1, !65
         store v1302v1 to v1305v1, !65
         v3650v1 = call local_log_51(v1303v1)
-        v3665v1 = get_local __ptr {  }, __tmp_arg3
-        v3667v1 = call local_log_58(v3665v1)
+        v3917v1 = get_local __ptr {  }, __struct_init_3
+        v3667v1 = call local_log_58(v3917v1)
         v1371v1 = const u64 1, !68
         ret u64 v1371v1
     }
 
     fn local_log_1(mut item !69: u64) -> (), !73 {
-        local { __ptr u64, u64 } __anon_0
         local slice __log_arg
+        local { __ptr u64, u64 } __tuple_init_0
         local u64 item_
 
         entry(mut item: u64):
         v18v1 = get_local __ptr u64, item_
         store item to v18v1
-        v1530v1 = get_local __ptr { __ptr u64, u64 }, __anon_0, !76
+        v1530v1 = get_local __ptr { __ptr u64, u64 }, __tuple_init_0, !76
         v1436v1 = const u64 0
         v1533v1 = get_elem_ptr v1530v1, __ptr __ptr u64, v1436v1, !77
         store v18v1 to v1533v1, !78
@@ -155,9 +155,9 @@ script {
         v1535v1 = get_elem_ptr v1530v1, __ptr u64, v1439v1, !79
         v28v1 = const u64 8
         store v28v1 to v1535v1, !80
-        v1540v1 = cast_ptr v1530v1 to __ptr slice, !74
         v3724v1 = get_local __ptr slice, __log_arg
-        mem_copy_val v3724v1, v1540v1
+        v3921v1 = cast_ptr v1530v1 to __ptr slice
+        mem_copy_val v3724v1, v3921v1
         v161v1 = const u64 1515152261580153489
         log __ptr slice v3724v1, v161v1
         v165v1 = const unit ()
@@ -280,19 +280,19 @@ script {
         v128v1 = get_elem_ptr v124v1, __ptr { ptr, u64, u64 }, v127v1, !86
         v3733v1 = asm(buffer: v128v1) -> __ptr { ptr, u64, u64 } buffer {
         }
-        v3913v1 = const u64 0
-        v3914v1 = get_elem_ptr v3733v1, __ptr ptr, v3913v1
-        v3915v1 = load v3914v1
-        v3919v1 = const u64 2
-        v3920v1 = get_elem_ptr v3733v1, __ptr u64, v3919v1
-        v3921v1 = load v3920v1
+        v3940v1 = const u64 0
+        v3941v1 = get_elem_ptr v3733v1, __ptr ptr, v3940v1
+        v3942v1 = load v3941v1
+        v3946v1 = const u64 2
+        v3947v1 = get_elem_ptr v3733v1, __ptr u64, v3946v1
+        v3948v1 = load v3947v1
         v142v1 = get_local __ptr { ptr, u64 }, __anon_1
         v143v1 = const u64 0
         v144v1 = get_elem_ptr v142v1, __ptr ptr, v143v1
-        store v3915v1 to v144v1
+        store v3942v1 to v144v1
         v146v1 = const u64 1
         v147v1 = get_elem_ptr v142v1, __ptr u64, v146v1
-        store v3921v1 to v147v1
+        store v3948v1 to v147v1
         v3735v1 = asm(s: v142v1) -> __ptr slice s {
         }
         v3806v1 = get_local __ptr slice, __aggr_memcpy_00
@@ -967,14 +967,14 @@ script {
     }
 
     fn local_log_46(mut item: __ptr { u64 }) -> (), !442 {
-        local { __ptr { u64 }, u64 } __anon_0
         local slice __log_arg
+        local { __ptr { u64 }, u64 } __tuple_init_0
         local { u64 } item_
 
         entry(item: __ptr { u64 }):
         v1091v1 = get_local __ptr { u64 }, item_
         mem_copy_val v1091v1, item
-        v3243v1 = get_local __ptr { __ptr { u64 }, u64 }, __anon_0, !443
+        v3243v1 = get_local __ptr { __ptr { u64 }, u64 }, __tuple_init_0, !443
         v1490v1 = const u64 0
         v3246v1 = get_elem_ptr v3243v1, __ptr __ptr { u64 }, v1490v1, !444
         store v1091v1 to v3246v1, !445
@@ -982,9 +982,9 @@ script {
         v3248v1 = get_elem_ptr v3243v1, __ptr u64, v1493v1, !446
         v1105v1 = const u64 8
         store v1105v1 to v3248v1, !447
-        v3253v1 = cast_ptr v3243v1 to __ptr slice, !74
         v3766v1 = get_local __ptr slice, __log_arg
-        mem_copy_val v3766v1, v3253v1
+        v3925v1 = cast_ptr v3243v1 to __ptr slice
+        mem_copy_val v3766v1, v3925v1
         v1154v1 = const u64 16566583104751091389
         log __ptr slice v3766v1, v1154v1
         v1158v1 = const unit ()
@@ -993,53 +993,50 @@ script {
 
     fn local_log_51(mut item: __ptr { u64, ( { u64 } | () ) }) -> (), !448 {
         local slice __log_arg
-        local { u64, ( { u64 } | () ) } __matched_value_1
         local { { ptr, u64, u64 } } __tmp_block_arg
         local { { ptr, u64, u64 } } buffer_
         local { { ptr, u64, u64 } } buffer__
 
         entry(item: __ptr { u64, ( { u64 } | () ) }):
-        v1166v1 = get_local __ptr { u64, ( { u64 } | () ) }, __matched_value_1
-        mem_copy_val v1166v1, item
         v3698v1 = get_local __ptr { { ptr, u64, u64 } }, buffer_
         v3699v1 = call new_6(v3698v1)
         v1213v1 = const u64 0
-        v3436v1 = get_elem_ptr v1166v1, __ptr u64, v1213v1, !450
-        v3950v1 = get_elem_ptr item, __ptr u64, v1213v1
-        v3437v1 = load v3950v1, !451
-        v1216v1 = const u64 0, !449
-        v3442v1 = cmp eq v3437v1 v1216v1, !454
-        cbr v3442v1, encode_allow_alias_52_abi_encode_57_block0(), encode_allow_alias_52_abi_encode_57_block1(), !455
+        v3977v1 = get_elem_ptr item, __ptr u64, v1213v1
+        v3437v1 = load v3977v1, !449
+        v1216v1 = const u64 0, !450
+        v3442v1 = cmp eq v3437v1 v1216v1, !453
+        cbr v3442v1, encode_allow_alias_52_abi_encode_57_block0(), encode_allow_alias_52_abi_encode_57_block1(), !454
 
         encode_allow_alias_52_abi_encode_57_block0():
-        v1219v1 = const u64 1
-        v1220v1 = const u64 0
-        v3462v1 = get_elem_ptr v1166v1, __ptr { u64 }, v1219v1, v1220v1, !456
         v3682v1 = get_local __ptr { { ptr, u64, u64 } }, buffer__
-        v1225v1 = const u64 0, !457
+        v1225v1 = const u64 0, !455
         v3683v1 = call abi_encode_5(v1225v1, v3698v1, v3682v1)
         v3721v1 = get_local __ptr { { ptr, u64, u64 } }, __tmp_block_arg
+        v1219v1 = const u64 1
+        v1220v1 = const u64 0
+        v3979v1 = get_elem_ptr item, __ptr { u64 }, v1219v1, v1220v1
         v1126v1 = const u64 0
-        v3722v3 = get_elem_ptr v3462v1, __ptr u64, v1126v1, !458
-        v3947v1 = load v3722v3
-        v3948v1 = call abi_encode_5(v3947v1, v3682v1, v3721v1)
-        br encode_allow_alias_52_abi_encode_57_block5(v3721v1), !459
+        v3980v1 = get_elem_ptr v3979v1, __ptr u64, v1126v1
+        v3974v1 = load v3980v1
+        v3975v1 = call abi_encode_5(v3974v1, v3682v1, v3721v1)
+        br encode_allow_alias_52_abi_encode_57_block5(v3721v1), !456
 
         encode_allow_alias_52_abi_encode_57_block1():
-        v3447v1 = load v3436v1, !460
-        v1244v1 = const u64 1, !449
-        v3452v1 = cmp eq v3447v1 v1244v1, !463
-        cbr v3452v1, encode_allow_alias_52_abi_encode_57_block2(), encode_allow_alias_52_abi_encode_57_block3(), !464
+        v3978v1 = get_elem_ptr item, __ptr u64, v1213v1
+        v3447v1 = load v3978v1, !457
+        v1244v1 = const u64 1, !450
+        v3452v1 = cmp eq v3447v1 v1244v1, !460
+        cbr v3452v1, encode_allow_alias_52_abi_encode_57_block2(), encode_allow_alias_52_abi_encode_57_block3(), !461
 
         encode_allow_alias_52_abi_encode_57_block2():
         v3685v1 = get_local __ptr { { ptr, u64, u64 } }, __tmp_block_arg
-        v1246v1 = const u64 1, !465
+        v1246v1 = const u64 1, !462
         v3686v1 = call abi_encode_5(v1246v1, v3698v1, v3685v1)
-        br encode_allow_alias_52_abi_encode_57_block5(v3685v1), !466
+        br encode_allow_alias_52_abi_encode_57_block5(v3685v1), !463
 
         encode_allow_alias_52_abi_encode_57_block3():
-        v1250v1 = const u64 14757395258967588866, !467
-        revert v1250v1, !468
+        v1250v1 = const u64 14757395258967588866, !464
+        revert v1250v1, !465
 
         encode_allow_alias_52_abi_encode_57_block5(mut v3651v1: __ptr { { ptr, u64, u64 } }):
         v3711v1 = get_local __ptr slice, __log_arg
@@ -1050,7 +1047,7 @@ script {
         ret () v1285v1
     }
 
-    fn local_log_58(mut item: __ptr {  }) -> (), !469 {
+    fn local_log_58(mut item: __ptr {  }) -> (), !466 {
         local slice __log_arg
         local { { ptr, u64, u64 } } buffer
         local { { ptr, u64, u64 } } buffer_
@@ -1059,7 +1056,7 @@ script {
         v3701v1 = get_local __ptr { { ptr, u64, u64 } }, buffer_
         v3702v1 = call new_6(v3701v1)
         v3688v1 = get_local __ptr { { ptr, u64, u64 } }, buffer
-        v1340v1 = const u64 77, !470
+        v1340v1 = const u64 77, !467
         v3689v1 = call abi_encode_5(v1340v1, v3701v1, v3688v1)
         v3714v1 = get_local __ptr slice, __log_arg
         v3715v1 = call as_raw_slice_7(v3688v1, v3714v1)
@@ -1146,7 +1143,7 @@ warning
 ____
 
   Compiled script "logging" with 6 warnings.
-    Finished release [optimized + fuel] target(s) [2.432 KB] in ???
+    Finished release [optimized + fuel] target(s) [2.424 KB] in ???
 
 > forc test --path test/src/e2e_vm_tests/test_programs/should_pass/language/logging --release
 exit status: 0
@@ -1242,12 +1239,12 @@ warning
 ____
 
   Compiled script "logging" with 7 warnings.
-    Finished release [optimized + fuel] target(s) [2.448 KB] in ???
+    Finished release [optimized + fuel] target(s) [2.432 KB] in ???
      Running 1 test, filtered 0 tests
 
 tested -- logging
 
-      test call_main ... ok (???, 4340 gas)
+      test call_main ... ok (???, 4329 gas)
 
 test result: OK. 1 passed; 0 failed; finished in ???
 

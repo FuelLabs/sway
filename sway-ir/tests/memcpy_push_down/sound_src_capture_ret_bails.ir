@@ -1,0 +1,13 @@
+// SOUNDNESS: returning the *source* pointer captures it; bail.
+//
+// Expected: entry `mem_copy_val` stays put.
+script {
+    entry fn main(order: __ptr { u64, u64 }) -> __ptr { u64, u64 } {
+        local mut { u64, u64 } order_copy
+
+        entry(order: __ptr { u64, u64 }):
+        v0 = get_local __ptr { u64, u64 }, order_copy
+        mem_copy_val v0, order // <------------------ must stay
+        ret __ptr { u64, u64 } order
+    }
+}

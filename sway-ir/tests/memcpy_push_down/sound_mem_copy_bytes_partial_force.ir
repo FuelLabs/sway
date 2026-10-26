@@ -1,0 +1,40 @@
+// CORRECTNESS: `mem_copy_bytes` with `byte_len` < symbol size is PartialWrite
+// and must materialize the pending copy beforehand.
+//
+// Expected:
+//   A = entry copy disappears,
+//   B = a copy materializes just before the partial `mem_copy_bytes`,
+//   C = read arm delegates to `order`.
+script {
+    entry fn main(flag: bool, order: __ptr { u64, u64 }, other: __ptr { u64, u64 }) -> u64 {
+        local mut { u64, u64 } order_copy
+
+        entry(flag: bool, order: __ptr { u64, u64 }, other: __ptr { u64, u64 }):
+        v0 = get_local __ptr { u64, u64 }, order_copy
+        mem_copy_val v0, order // <------------------ A
+        cbr flag, block_partial(), block_read()
+
+        block_partial():
+        v1 = get_local __ptr { u64, u64 }, order_copy
+        mem_copy_bytes v1, other, 8 // <------------------ B (partial)
+        v2 = get_local __ptr { u64, u64 }, order_copy
+        v3 = call consume_read_only(v2)
+        br block_join(v3)
+
+        block_read():
+        v4 = get_local __ptr { u64, u64 }, order_copy
+        v5 = call consume_read_only(v4) // <------------------ C
+        br block_join(v5)
+
+        block_join(v6: u64):
+        ret u64 v6
+    }
+
+    fn consume_read_only(order: __ptr { u64, u64 }) -> u64 {
+        entry(order: __ptr { u64, u64 }):
+        v0 = const u64 0
+        v1 = get_elem_ptr order, __ptr u64, v0
+        v2 = load v1
+        ret u64 v2
+    }
+}

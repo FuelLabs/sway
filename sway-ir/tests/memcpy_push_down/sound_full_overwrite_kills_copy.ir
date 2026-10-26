@@ -1,0 +1,55 @@
+// SOUNDNESS/CORRECTNESS: a full overwrite of `dst` kills the pending copy on
+// that path — no materialization of the original source is needed, because
+// the old value is dead. The overwrite itself is a whole-aggregate `store`
+// (not a second `mem_copy_val` candidate) so the kill is visible in one pass.
+//
+// ```sway
+// fn main(flag: bool, order: Order, other: Order) -> u64 {
+//     let mut order_copy = order;
+//     if flag {
+//         order_copy = other; // full overwrite
+//         consume_read_only(order_copy)
+//     } else {
+//         consume_read_only(order_copy)
+//     }
+// }
+// ```
+//
+// Expected:
+//   A = entry copy disappears,
+//   B = overwrite arm keeps the aggregate `store` with no mat from `order`,
+//   C = read arm delegates to `order`.
+script {
+    entry fn main(flag: bool, order: __ptr { u64, u64 }, other: __ptr { u64, u64 }) -> u64 {
+        local mut { u64, u64 } order_copy
+
+        entry(flag: bool, order: __ptr { u64, u64 }, other: __ptr { u64, u64 }):
+        v0 = get_local __ptr { u64, u64 }, order_copy
+        mem_copy_val v0, order // <------------------ A
+        cbr flag, block_overwrite(), block_read()
+
+        block_overwrite():
+        v1 = load other
+        v2 = get_local __ptr { u64, u64 }, order_copy
+        store v1 to v2 // <------------------ B (full kill; not from `order`)
+        v3 = get_local __ptr { u64, u64 }, order_copy
+        v4 = call consume_read_only(v3)
+        br block_join(v4)
+
+        block_read():
+        v5 = get_local __ptr { u64, u64 }, order_copy
+        v6 = call consume_read_only(v5) // <------------------ C
+        br block_join(v6)
+
+        block_join(v7: u64):
+        ret u64 v7
+    }
+
+    fn consume_read_only(order: __ptr { u64, u64 }) -> u64 {
+        entry(order: __ptr { u64, u64 }):
+        v0 = const u64 0
+        v1 = get_elem_ptr order, __ptr u64, v0
+        v2 = load v1
+        ret u64 v2
+    }
+}

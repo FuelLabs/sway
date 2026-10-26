@@ -1,0 +1,71 @@
+// ```sway
+// script;
+//
+// struct Order {
+//     a: u64,
+//     prev: u64,
+// }
+//
+// #[inline(never)]
+// fn consume_read_only(order: Order) -> u64 {
+//     order.a
+// }
+//
+// fn main(result: Result<u64, u64>, order: Order) -> u64 {
+//     let mut order_copy = order;
+//     if let Result::Ok(_x) = result {
+//         order_copy.prev = 42;
+//         consume_read_only(order_copy)
+//     } else {
+//         consume_read_only(order_copy)
+//     }
+// }
+// ```
+//
+// `if let` is the same CFG shape as a two-arm `match` on the discriminant.
+//
+// Expected from memcpy-push-down:
+//   A = the entry `mem_copy_val` disappears,
+//   B = a copy materializes in `arm_ok`, just before the store,
+//   C = `arm_err` calls `consume_read_only` on the source argument.
+script {
+    entry fn main(result: __ptr { u64, u64 }, order: __ptr { u64, u64 }) -> u64 {
+        local mut { u64, u64 } order_copy
+
+        entry(result: __ptr { u64, u64 }, order: __ptr { u64, u64 }):
+        v0 = get_local __ptr { u64, u64 }, order_copy
+        mem_copy_val v0, order // <------------------ A
+        v1 = const u64 0
+        v2 = get_elem_ptr result, __ptr u64, v1
+        v3 = load v2
+        v4 = const u64 0
+        v5 = cmp eq v3 v4
+        cbr v5, arm_ok(), arm_err()
+
+        arm_ok():
+        v6 = get_local __ptr { u64, u64 }, order_copy
+        v7 = const u64 1
+        v8 = get_elem_ptr v6, __ptr u64, v7
+        v9 = const u64 42
+        store v9 to v8 // <------------------ B
+        v10 = get_local __ptr { u64, u64 }, order_copy
+        v11 = call consume_read_only(v10)
+        br block_join(v11)
+
+        arm_err():
+        v12 = get_local __ptr { u64, u64 }, order_copy
+        v13 = call consume_read_only(v12) // <------------------ C
+        br block_join(v13)
+
+        block_join(v14: u64):
+        ret u64 v14
+    }
+
+    fn consume_read_only(order: __ptr { u64, u64 }) -> u64 {
+        entry(order: __ptr { u64, u64 }):
+        v0 = const u64 0
+        v1 = get_elem_ptr order, __ptr u64, v0
+        v2 = load v1
+        ret u64 v2
+    }
+}
