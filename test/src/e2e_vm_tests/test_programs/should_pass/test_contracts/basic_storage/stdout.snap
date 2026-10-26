@@ -6,40 +6,36 @@ unwrap_84 should not show never as one of its block arguments
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/basic_storage --ir final --asm final | filter-fn basic_storage unwrap_84
 
 pub fn unwrap_84(mut self: __ptr { u64, ( () | b256 ) }, mut __ret_value: __ptr b256) -> () {
-    local { u64, ( () | b256 ) } __matched_value_4
     local u64 code_
     local u64 other_
 
     entry(mut self: __ptr { u64, ( () | b256 ) }, mut __ret_value: __ptr b256):
-    v3576v1 = get_local __ptr { u64, ( () | b256 ) }, __matched_value_4
-    mem_copy_val v3576v1, self
-    v3578v1 = const u64 0
-    v3579v1 = get_elem_ptr self, __ptr u64, v3578v1
-    v3580v1 = get_local __ptr u64, other_
-    v3581v1 = const u64 1
-    store v3581v1 to v3580v1
-    v3583v1 = load v3579v1
-    v3584v1 = get_local __ptr u64, other_
-    v3585v1 = load v3584v1
-    v3586v1 = cmp eq v3583v1 v3585v1
-    cbr v3586v1, block0(), block1()
+    v3529v1 = const u64 0
+    v3530v1 = get_elem_ptr self, __ptr u64, v3529v1
+    v3531v1 = get_local __ptr u64, other_
+    v3532v1 = const u64 1
+    store v3532v1 to v3531v1
+    v3534v1 = load v3530v1
+    v3535v1 = get_local __ptr u64, other_
+    v3536v1 = load v3535v1
+    v3537v1 = cmp eq v3534v1 v3536v1
+    cbr v3537v1, block0(), block1()
 
     block0():
-    v3588v1 = get_local __ptr { u64, ( () | b256 ) }, __matched_value_4
-    v3589v1 = const u64 1
-    v3590v1 = const u64 1
-    v3591v1 = get_elem_ptr v3588v1, __ptr b256, v3589v1, v3590v1
-    mem_copy_val __ret_value, v3591v1
-    v3593v1 = const unit ()
-    ret () v3593v1
+    v3539v1 = const u64 1
+    v3540v1 = const u64 1
+    v3541v1 = get_elem_ptr self, __ptr b256, v3539v1, v3540v1
+    mem_copy_val __ret_value, v3541v1
+    v3543v1 = const unit ()
+    ret () v3543v1
 
     block1():
-    v3595v1 = get_local __ptr u64, code_
-    v3596v1 = const u64 0
-    store v3596v1 to v3595v1
-    v3598v1 = get_local __ptr u64, code_
-    v3599v1 = load v3598v1
-    revert v3599v1
+    v3545v1 = get_local __ptr u64, code_
+    v3546v1 = const u64 0
+    store v3546v1 to v3545v1
+    v3548v1 = get_local __ptr u64, code_
+    v3549v1 = load v3548v1
+    revert v3549v1
 }
 
 
@@ -47,18 +43,17 @@ pub fn unwrap_84(mut self: __ptr { u64, ( () | b256 ) }, mut __ret_value: __ptr 
 
 pshh i530432                  ; [fn init: unwrap_84]: push used high registers 40..64
 move $$locbase $sp            ; [fn init: unwrap_84]: set locals base register
-cfei i56                      ; [fn init: unwrap_84]: allocate: locals 56 byte(s), call args 0 slot(s)
-mcpi $$locbase $$arg0 i40     ; copy memory
-sw   $$locbase $one i6        ; store word
+cfei i16                      ; [fn init: unwrap_84]: allocate: locals 16 byte(s), call args 0 slot(s)
+sw   $$locbase $one i1        ; store word
 lw   $r0 $$arg0 i0            ; load word
-lw   $r1 $$locbase i6         ; load word
+lw   $r1 $$locbase i1         ; load word
 eq   $r0 $r0 $r1
 jnzf $r0 $zero i3
-sw   $$locbase $zero i5       ; store word
-lw   $r0 $$locbase i5         ; load word
+sw   $$locbase $zero i0       ; store word
+lw   $r0 $$locbase i0         ; load word
 rvrt $r0
-addi $r0 $$locbase i8         ; get offset to aggregate element
+addi $r0 $$arg0 i8            ; get offset to aggregate element
 mcpi $$arg1 $r0 i32           ; copy memory
-cfsi i56                      ; [fn end: unwrap_84] free: locals 56 byte(s), call args 0 slot(s)
+cfsi i16                      ; [fn end: unwrap_84] free: locals 16 byte(s), call args 0 slot(s)
 poph i530432                  ; [fn end: unwrap_84]: restore used high registers 40..64
 jal  $zero $$reta i0          ; [fn end: unwrap_84] return from call
