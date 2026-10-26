@@ -140,9 +140,7 @@ fn classify_inst(
                 } else if matches!(
                     get_referred_symbols(context, *ptr),
                     ReferredSymbols::Incomplete(_)
-                ) && ptr
-                    .get_type(context)
-                    .is_some_and(|ty| ty.is_ptr(context))
+                ) && ptr.get_type(context).is_some_and(|ty| ty.is_ptr(context))
                 {
                     // A pointer we cannot resolve might alias either symbol,
                     // but only if the instruction actually dereferences it.
@@ -248,12 +246,12 @@ fn classify_inst(
             {
                 for access in accesses.iter_mut() {
                     if access.ptr == *dst_val_ptr && access.kind != AccessKind::Read {
-                        access.kind = if *byte_len >= sym_size(access.sym) && sym_size(access.sym) > 0
-                        {
-                            AccessKind::FullWrite
-                        } else {
-                            AccessKind::PartialWrite
-                        };
+                        access.kind =
+                            if *byte_len >= sym_size(access.sym) && sym_size(access.sym) > 0 {
+                                AccessKind::FullWrite
+                            } else {
+                                AccessKind::PartialWrite
+                            };
                     }
                 }
             }
@@ -331,11 +329,7 @@ fn analyze_ptr_chain(context: &Context, ptr: Value, dst_local: LocalVar) -> Opti
 /// before `force`: only constants / a `get_local` of the destination lie
 /// between them in the same block. Stops the pass from re-inserting a copy
 /// that a previous rewrite already placed at its final forcing site.
-fn candidate_already_at_force(
-    context: &Context,
-    candidate: &Candidate,
-    force: Value,
-) -> bool {
+fn candidate_already_at_force(context: &Context, candidate: &Candidate, force: Value) -> bool {
     let mut after_candidate = false;
     for inst in candidate.block.instruction_iter(context) {
         if inst == candidate.inst {
@@ -430,8 +424,7 @@ fn find_candidates(context: &Context, function: Function) -> Vec<Candidate> {
             }
             _ => continue,
         };
-        if dst_sym == src_sym || dst_val_ptr.get_type(context) != src_val_ptr.get_type(context)
-        {
+        if dst_sym == src_sym || dst_val_ptr.get_type(context) != src_val_ptr.get_type(context) {
             continue;
         }
         candidates.push(Candidate {
@@ -526,10 +519,7 @@ fn push_down_candidate(
 
     // Transfer function: scan one block under an in-state, optionally
     // recording the plan.
-    let scan = |block: Block,
-                in_state: State,
-                plan: &mut Option<&mut Plan>|
-     -> Option<State> {
+    let scan = |block: Block, in_state: State, plan: &mut Option<&mut Plan>| -> Option<State> {
         let mut state = in_state;
         for (inst, accesses) in &block_accesses[&block] {
             let has_forcing = accesses.iter().any(|a| {
@@ -577,70 +567,68 @@ fn push_down_candidate(
     };
 
     // Blocks containing the candidate need an ordered two-phase scan.
-    let scan_block = |block: Block,
-                      in_state: State,
-                      plan: &mut Option<&mut Plan>|
-     -> Option<State> {
-        if block != candidate.block {
-            return scan(block, in_state, plan);
-        }
-        // Split the block's accesses at the candidate instruction.
-        let mut state = in_state;
-        let mut after_candidate = false;
-        let insts: Vec<Value> = block.instruction_iter(context).collect();
-        for inst in insts {
-            if inst == candidate.inst {
-                after_candidate = true;
-                state = State::Pending;
-                continue;
+    let scan_block =
+        |block: Block, in_state: State, plan: &mut Option<&mut Plan>| -> Option<State> {
+            if block != candidate.block {
+                return scan(block, in_state, plan);
             }
-            if !after_candidate {
-                continue;
-            }
-            let accesses = &block_accesses[&block]
-                .iter()
-                .find(|(i, _)| *i == inst)
-                .unwrap()
-                .1;
-            let has_forcing = accesses.iter().any(|a| {
-                matches!(
-                    a.kind,
-                    AccessKind::PartialWrite | AccessKind::FullWrite | AccessKind::MayWrite
-                )
-            });
-            if state == State::Pending && has_forcing {
-                let full_dst_overwrite = accesses.iter().all(|a| {
-                    a.kind == AccessKind::Read
-                        || (a.sym == candidate.dst_sym && a.kind == AccessKind::FullWrite)
-                }) && accesses
+            // Split the block's accesses at the candidate instruction.
+            let mut state = in_state;
+            let mut after_candidate = false;
+            let insts: Vec<Value> = block.instruction_iter(context).collect();
+            for inst in insts {
+                if inst == candidate.inst {
+                    after_candidate = true;
+                    state = State::Pending;
+                    continue;
+                }
+                if !after_candidate {
+                    continue;
+                }
+                let accesses = &block_accesses[&block]
                     .iter()
-                    .any(|a| a.sym == candidate.dst_sym && a.kind == AccessKind::FullWrite);
-                if !full_dst_overwrite {
-                    if let Some(plan) = plan.as_deref_mut() {
-                        if candidate_already_at_force(context, candidate, inst) {
-                            plan.keep_candidate = true;
-                        } else {
-                            plan.inserts.push(inst);
-                        }
-                    }
-                }
-                state = State::Materialized;
-                continue;
-            }
-            if state == State::Pending {
-                for access in accesses {
-                    if access.sym == candidate.dst_sym && access.kind == AccessKind::Read {
-                        analyze_ptr_chain(context, access.ptr, candidate.dst_local)?;
+                    .find(|(i, _)| *i == inst)
+                    .unwrap()
+                    .1;
+                let has_forcing = accesses.iter().any(|a| {
+                    matches!(
+                        a.kind,
+                        AccessKind::PartialWrite | AccessKind::FullWrite | AccessKind::MayWrite
+                    )
+                });
+                if state == State::Pending && has_forcing {
+                    let full_dst_overwrite = accesses.iter().all(|a| {
+                        a.kind == AccessKind::Read
+                            || (a.sym == candidate.dst_sym && a.kind == AccessKind::FullWrite)
+                    }) && accesses
+                        .iter()
+                        .any(|a| a.sym == candidate.dst_sym && a.kind == AccessKind::FullWrite);
+                    if !full_dst_overwrite {
                         if let Some(plan) = plan.as_deref_mut() {
-                            plan.rewrites.push((inst, access.ptr));
-                            plan.delegated_reads += 1;
+                            if candidate_already_at_force(context, candidate, inst) {
+                                plan.keep_candidate = true;
+                            } else {
+                                plan.inserts.push(inst);
+                            }
+                        }
+                    }
+                    state = State::Materialized;
+                    continue;
+                }
+                if state == State::Pending {
+                    for access in accesses {
+                        if access.sym == candidate.dst_sym && access.kind == AccessKind::Read {
+                            analyze_ptr_chain(context, access.ptr, candidate.dst_local)?;
+                            if let Some(plan) = plan.as_deref_mut() {
+                                plan.rewrites.push((inst, access.ptr));
+                                plan.delegated_reads += 1;
+                            }
                         }
                     }
                 }
             }
-        }
-        Some(state)
-    };
+            Some(state)
+        };
 
     // Blocks from which an access to the destination is still reachable.
     // Joins outside this set have a dead state: reconciling them would only
@@ -779,9 +767,7 @@ fn push_down_candidate(
             .instruction_iter(context)
             .next_back()
             .expect("block must have a terminator");
-        if candidate.block == *block
-            && candidate_already_at_force(context, candidate, terminator)
-        {
+        if candidate.block == *block && candidate_already_at_force(context, candidate, terminator) {
             // A previous rewrite already parked the copy on this edge.
             keep_candidate = true;
         } else {
@@ -797,7 +783,10 @@ fn push_down_candidate(
         keep_candidate,
     };
     for block in &rpo {
-        let (state_in, _) = in_state.get(block).copied().unwrap_or((State::NoCopy, false));
+        let (state_in, _) = in_state
+            .get(block)
+            .copied()
+            .unwrap_or((State::NoCopy, false));
         let mut plan_ref: Option<&mut Plan> = Some(&mut plan);
         if scan_block(*block, state_in, &mut plan_ref).is_none() {
             return Ok(false);
@@ -806,10 +795,7 @@ fn push_down_candidate(
 
     // Profitability: at least one read must be delegated, or the copy must
     // move (later in the same block, to another block, or onto a join edge).
-    if plan.delegated_reads == 0
-        && plan.inserts.is_empty()
-        && plan.edge_inserts.is_empty()
-    {
+    if plan.delegated_reads == 0 && plan.inserts.is_empty() && plan.edge_inserts.is_empty() {
         return Ok(false);
     }
 
@@ -817,9 +803,7 @@ fn push_down_candidate(
     let insert_copy_before = |context: &mut Context, before: Value| {
         let dst_ptr = InstructionInserter::before(context, before).get_local(candidate.dst_local);
         let src_ptr = match candidate.src {
-            SrcPtr::Local(local) => {
-                InstructionInserter::before(context, before).get_local(local)
-            }
+            SrcPtr::Local(local) => InstructionInserter::before(context, before).get_local(local),
             SrcPtr::Arg(val) => val,
         };
         InstructionInserter::before(context, before).mem_copy_val(dst_ptr, src_ptr);
@@ -838,18 +822,16 @@ fn push_down_candidate(
     for (inst, old_ptr) in &plan.rewrites {
         let chain = analyze_ptr_chain(context, *old_ptr, candidate.dst_local)
             .expect("chain checked during planning");
-        fn build(
-            context: &mut Context,
-            inst: Value,
-            chain: &PtrChain,
-            cur: Value,
-        ) -> Value {
+        fn build(context: &mut Context, inst: Value, chain: &PtrChain, cur: Value) -> Value {
             match chain {
                 PtrChain::Base => cur,
                 PtrChain::Gep(inner, elem_ty, indices) => {
                     let base = build(context, inst, inner, cur);
-                    InstructionInserter::before(context, inst)
-                        .get_elem_ptr(base, *elem_ty, indices.clone())
+                    InstructionInserter::before(context, inst).get_elem_ptr(
+                        base,
+                        *elem_ty,
+                        indices.clone(),
+                    )
                 }
                 PtrChain::Cast(inner, ty) => {
                     let base = build(context, inst, inner, cur);
@@ -858,9 +840,7 @@ fn push_down_candidate(
             }
         }
         let mut cur = match candidate.src {
-            SrcPtr::Local(local) => {
-                InstructionInserter::before(context, *inst).get_local(local)
-            }
+            SrcPtr::Local(local) => InstructionInserter::before(context, *inst).get_local(local),
             SrcPtr::Arg(val) => val,
         };
         cur = build(context, *inst, &chain, cur);
