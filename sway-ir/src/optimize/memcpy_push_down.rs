@@ -504,7 +504,8 @@ fn push_down_candidate(
             .instruction_iter(context)
             .position(|inst| inst == candidate.inst)
             .unwrap_or(usize::MAX);
-        for (block, insts) in &block_accesses {
+        for block in &blocks {
+            let insts = &block_accesses[block];
             for (idx, (_, accesses)) in insts.iter().enumerate() {
                 if !accesses.iter().any(|a| a.kind == AccessKind::MayWrite) {
                     continue;
@@ -563,9 +564,7 @@ fn push_down_candidate(
                 // Only reads remain: delegate destination reads to the source.
                 for access in accesses {
                     if access.sym == candidate.dst_sym && access.kind == AccessKind::Read {
-                        if analyze_ptr_chain(context, access.ptr, candidate.dst_local).is_none() {
-                            return None;
-                        }
+                        analyze_ptr_chain(context, access.ptr, candidate.dst_local)?;
                         if let Some(plan) = plan.as_deref_mut() {
                             plan.rewrites.push((*inst, access.ptr));
                             plan.delegated_reads += 1;
@@ -631,9 +630,7 @@ fn push_down_candidate(
             if state == State::Pending {
                 for access in accesses {
                     if access.sym == candidate.dst_sym && access.kind == AccessKind::Read {
-                        if analyze_ptr_chain(context, access.ptr, candidate.dst_local).is_none() {
-                            return None;
-                        }
+                        analyze_ptr_chain(context, access.ptr, candidate.dst_local)?;
                         if let Some(plan) = plan.as_deref_mut() {
                             plan.rewrites.push((inst, access.ptr));
                             plan.delegated_reads += 1;
@@ -752,8 +749,11 @@ fn push_down_candidate(
             return Ok(false);
         }
     }
-    for pred in &forced {
-        if pred
+    for block in &rpo {
+        if !forced.contains(block) {
+            continue;
+        }
+        if block
             .successors(context)
             .iter()
             .any(|succ| cycles.contains(&succ.block))
@@ -763,7 +763,7 @@ fn push_down_candidate(
         // A forced pred with multiple successors is a critical-edge join:
         // inserting at the pred terminator would also run on edges that do
         // not need the copy. v1 does not split critical edges, so bail.
-        if pred.successors(context).len() > 1 {
+        if block.successors(context).len() > 1 {
             return Ok(false);
         }
     }
@@ -771,18 +771,21 @@ fn push_down_candidate(
     // Build the final plan.
     let mut keep_candidate = false;
     let mut edge_inserts = Vec::new();
-    for pred in &forced {
-        let terminator = pred
+    for block in &rpo {
+        if !forced.contains(block) {
+            continue;
+        }
+        let terminator = block
             .instruction_iter(context)
-            .last()
+            .next_back()
             .expect("block must have a terminator");
-        if candidate.block == *pred
+        if candidate.block == *block
             && candidate_already_at_force(context, candidate, terminator)
         {
             // A previous rewrite already parked the copy on this edge.
             keep_candidate = true;
         } else {
-            edge_inserts.push(*pred);
+            edge_inserts.push(*block);
         }
     }
     let mut plan = Plan {
@@ -828,7 +831,7 @@ fn push_down_candidate(
     for pred in &plan.edge_inserts {
         let terminator = pred
             .instruction_iter(context)
-            .last()
+            .next_back()
             .expect("block must have a terminator");
         insert_copy_before(context, terminator);
     }
