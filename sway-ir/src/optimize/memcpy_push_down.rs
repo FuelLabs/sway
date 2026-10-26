@@ -725,7 +725,7 @@ fn push_down_candidate(
     // invisible to the in/out check, so a candidate that itself lives in a
     // cycle is also rejected. The join at a loop header can further "hide"
     // pending by reconciling to Materialized and forcing a preheader edge
-    // copy -- v1 still bails on that so a sunk copy can never ride a backedge.
+    // copy -- the pass bails on that so a sunk copy can never ride a backedge.
     let cycles = cycle_blocks(context, function);
     if cycles.contains(&candidate.block) {
         return Ok(false);
@@ -750,7 +750,7 @@ fn push_down_candidate(
         }
         // A forced pred with multiple successors is a critical-edge join:
         // inserting at the pred terminator would also run on edges that do
-        // not need the copy. v1 does not split critical edges, so bail.
+        // not need the copy. This pass does not split critical edges, so bail.
         if block.successors(context).len() > 1 {
             return Ok(false);
         }

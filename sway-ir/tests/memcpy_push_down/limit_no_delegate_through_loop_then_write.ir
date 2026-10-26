@@ -1,11 +1,8 @@
-// V1 LIMIT: cannot delegate read-only loop iterations and materialize only
+// LIMIT: cannot delegate read-only loop iterations and materialize only
 // after the loop exits.
 //
 // Why: the pending state would still sit on cycle blocks during the loop,
-// which v1 forbids outright.
-//
-// What a future version could do: leave pending through a read-only loop,
-// then materialize once on the exit edge / before the post-loop write.
+// which the pass forbids outright.
 //
 // ```sway
 // fn main(n: u64, order: Order) -> u64 {
@@ -21,7 +18,7 @@
 // }
 // ```
 //
-// Expected from memcpy-push-down (v1): opt does nothing —
+// Expected from memcpy-push-down: opt does nothing —
 //   A = the entry `mem_copy_val` stays put.
 script {
     entry fn main(n: u64, order: __ptr { u64, u64 }) -> u64 {

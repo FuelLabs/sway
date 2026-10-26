@@ -1,5 +1,3 @@
-// Corresponding Sway (this hand-written IR mirrors its lowering):
-//
 // ```sway
 // script;
 //

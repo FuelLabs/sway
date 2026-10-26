@@ -1,11 +1,8 @@
-// V1 LIMIT: pending region must not touch a CFG cycle.
+// LIMIT: pending region must not touch a CFG cycle.
 //
 // Why: sinking / leaving a logical copy pending across a backedge could
 // re-execute a materialized copy every iteration, or require loop-aware
-// reasoning v1 does not do.
-//
-// What a future version could do: prove the loop is read-only w.r.t. `dst`/`src`
-// and delegate every iteration's reads to `order` with *no* copy at all.
+// reasoning this pass does not do.
 //
 // ```sway
 // fn main(n: u64, order: Order) -> u64 {
@@ -20,7 +17,7 @@
 // }
 // ```
 //
-// Expected from memcpy-push-down (v1): opt does nothing —
+// Expected from memcpy-push-down: opt does nothing —
 //   A = the entry `mem_copy_val` stays put.
 script {
     entry fn main(n: u64, order: __ptr { u64, u64 }) -> u64 {

@@ -1,11 +1,7 @@
-// V1 LIMIT: candidate copy itself lives inside a cycle.
+// LIMIT: candidate copy itself lives inside a cycle.
 //
 // Why: mid-block `Pending` on a cycle block is invisible to the in/out cycle
-// check alone, so v1 also rejects any candidate whose home block is cyclic.
-//
-// What a future version could do: allow *intra-iteration* sinking (copy once
-// per iteration, only if that iteration writes), without carrying pending
-// across the backedge.
+// check alone, so the pass also rejects any candidate whose home block is cyclic.
 //
 // ```sway
 // fn main(n: u64, order: Order) -> u64 {
@@ -21,7 +17,7 @@
 // }
 // ```
 //
-// Expected from memcpy-push-down (v1): opt does nothing —
+// Expected from memcpy-push-down: opt does nothing —
 //   A = the per-iteration `mem_copy_val` stays put.
 script {
     entry fn main(n: u64, order: __ptr { u64, u64 }) -> u64 {

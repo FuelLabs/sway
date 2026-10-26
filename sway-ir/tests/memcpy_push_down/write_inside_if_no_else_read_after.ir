@@ -1,7 +1,3 @@
-// Corresponding Sway (this hand-written IR mirrors its lowering; the
-// fall-through edge into the join is already split so the pending edge has
-// a single-successor pred — v1 does not itself split critical edges):
-//
 // ```sway
 // script;
 //

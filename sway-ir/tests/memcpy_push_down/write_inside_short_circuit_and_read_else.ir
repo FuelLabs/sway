@@ -1,6 +1,3 @@
-// Corresponding Sway (this hand-written IR mirrors its lowering; `a && b`
-// becomes a nested `cbr` that skips evaluating `b` when `a` is false):
-//
 // ```sway
 // script;
 //

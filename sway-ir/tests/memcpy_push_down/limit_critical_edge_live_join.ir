@@ -1,15 +1,12 @@
-// V1 LIMIT: no critical-edge splitting.
+// LIMIT: no critical-edge splitting.
 //
 // Why: a live join of `Pending` and `Materialized` wants a copy only on the
 // pending incoming edge. If that edge's predecessor has another successor,
 // inserting at the pred terminator would also run on the non-pending edge.
-// v1 does not split critical edges, so it bails.
-//
-// What a future version could do: split the critical edge (or thread a block
-// argument carrying the buffer) and materialize only on the pending edge.
+// This pass does not split critical edges, so it bails.
 //
 // Contrast: `write_inside_if_no_else_read_after` is the same Sway with the
-// fall-through edge already split — there v1 *does* optimize.
+// fall-through edge already split — there the pass *does* optimize.
 //
 // ```sway
 // fn main(flag: bool, order: Order) -> u64 {
@@ -21,7 +18,7 @@
 // }
 // ```
 //
-// Expected from memcpy-push-down (v1): opt does nothing —
+// Expected from memcpy-push-down: opt does nothing —
 //   A = the entry `mem_copy_val` stays put.
 script {
     entry fn main(flag: bool, order: __ptr { u64, u64 }) -> u64 {

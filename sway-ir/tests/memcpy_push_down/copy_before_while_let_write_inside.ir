@@ -1,6 +1,3 @@
-// Corresponding Sway (this hand-written IR mirrors its lowering; `while let`
-// is a loop whose header tests an `Option`/`Result` discriminant):
-//
 // ```sway
 // script;
 //
@@ -30,9 +27,9 @@
 // ```
 //
 // Same CFG family as `copy_before_loop_write_inside`: pending would cross a
-// cycle, so v1 must bail.
+// cycle, so the pass must bail.
 //
-// Expected from memcpy-push-down (v1):
+// Expected from memcpy-push-down:
 //   A = the entry `mem_copy_val` stays put (bail: pending would cross the loop).
 script {
     entry fn main(order: __ptr { u64, u64 }) -> u64 {

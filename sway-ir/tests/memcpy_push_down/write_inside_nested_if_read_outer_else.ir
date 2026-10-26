@@ -1,7 +1,3 @@
-// Corresponding Sway (this hand-written IR mirrors its lowering; the inner
-// fall-through edge is already split — v1 does not itself split critical
-// edges):
-//
 // ```sway
 // script;
 //

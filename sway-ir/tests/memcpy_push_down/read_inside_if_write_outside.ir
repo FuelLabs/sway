@@ -1,6 +1,3 @@
-// Corresponding Sway (this hand-written IR mirrors its lowering; the early
-// `return` is why the read branch returns directly instead of joining):
-//
 // ```sway
 // script;
 //

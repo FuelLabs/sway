@@ -1,6 +1,3 @@
-// Corresponding Sway (this hand-written IR mirrors its lowering as nested
-// `cbr`s; this tree has no `switch` yet):
-//
 // ```sway
 // script;
 //

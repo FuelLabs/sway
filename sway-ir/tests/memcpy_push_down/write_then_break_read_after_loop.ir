@@ -1,5 +1,3 @@
-// Corresponding Sway (this hand-written IR mirrors its lowering):
-//
 // ```sway
 // script;
 //
@@ -28,10 +26,10 @@
 // ```
 //
 // Write then `break` out of a loop; a shared read runs after the loop.
-// Pending would touch a cycle, so v1 must bail (must not sink the copy onto
+// Pending would touch a cycle, so the pass must bail (must not sink the copy onto
 // the break edge or into the body).
 //
-// Expected from memcpy-push-down (v1):
+// Expected from memcpy-push-down:
 //   A = the entry `mem_copy_val` stays put (bail: pending would cross the loop).
 script {
     entry fn main(n: u64, order: __ptr { u64, u64 }) -> u64 {
