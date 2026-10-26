@@ -1,0 +1,68 @@
+// Corresponding Sway (this hand-written IR mirrors its lowering):
+//
+// ```sway
+// script;
+//
+// struct Order {
+//     a: u64,
+//     prev: u64,
+// }
+//
+// #[inline(never)]
+// fn consume_read_only(order: Order) -> u64 {
+//     order.a
+// }
+//
+// fn main(x: u64, order: Order) -> u64 {
+//     let mut order_copy = order;
+//     match x {
+//         0 => {
+//             order_copy.prev = 42;
+//             consume_read_only(order_copy)
+//         },
+//         _ => revert(0),
+//     }
+// }
+// ```
+//
+// Diverging match arm: no join with the write arm, so the copy only
+// materializes on the writing path.
+//
+// Expected from memcpy-push-down:
+//   A = the entry `mem_copy_val` disappears,
+//   B = a copy materializes in `arm_write`, just before the store,
+//   C = `arm_revert` is untouched.
+script {
+    entry fn main(x: u64, order: __ptr { u64, u64 }) -> u64 {
+        local mut { u64, u64 } order_copy
+
+        entry(x: u64, order: __ptr { u64, u64 }):
+        v0 = get_local __ptr { u64, u64 }, order_copy
+        mem_copy_val v0, order // <------------------ A
+        v1 = const u64 0
+        v2 = cmp eq x v1
+        cbr v2, arm_write(), arm_revert()
+
+        arm_write():
+        v3 = get_local __ptr { u64, u64 }, order_copy
+        v4 = const u64 1
+        v5 = get_elem_ptr v3, __ptr u64, v4
+        v6 = const u64 42
+        store v6 to v5 // <------------------ B
+        v7 = get_local __ptr { u64, u64 }, order_copy
+        v8 = call consume_read_only(v7)
+        ret u64 v8
+
+        arm_revert(): // <------------------ C
+        v9 = const u64 0
+        revert v9
+    }
+
+    fn consume_read_only(order: __ptr { u64, u64 }) -> u64 {
+        entry(order: __ptr { u64, u64 }):
+        v0 = const u64 0
+        v1 = get_elem_ptr order, __ptr u64, v0
+        v2 = load v1
+        ret u64 v2
+    }
+}

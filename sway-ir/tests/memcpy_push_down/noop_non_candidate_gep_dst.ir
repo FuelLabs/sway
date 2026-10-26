@@ -1,0 +1,27 @@
+// FILTER: destination must be a whole `get_local`, not a GEP.
+//
+// Expected: Modified: false.
+script {
+    entry fn main(order: __ptr { u64, u64 }) -> u64 {
+        local mut { u64, u64 } order_copy
+
+        entry(order: __ptr { u64, u64 }):
+        v0 = get_local __ptr { u64, u64 }, order_copy
+        v1 = const u64 0
+        v2 = get_elem_ptr v0, __ptr u64, v1
+        v3 = const u64 0
+        v4 = get_elem_ptr order, __ptr u64, v3
+        mem_copy_val v2, v4
+        v5 = get_local __ptr { u64, u64 }, order_copy
+        v6 = call consume_read_only(v5)
+        ret u64 v6
+    }
+
+    fn consume_read_only(order: __ptr { u64, u64 }) -> u64 {
+        entry(order: __ptr { u64, u64 }):
+        v0 = const u64 0
+        v1 = get_elem_ptr order, __ptr u64, v0
+        v2 = load v1
+        ret u64 v2
+    }
+}

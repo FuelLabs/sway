@@ -1,0 +1,79 @@
+// V1 LIMIT: cannot delegate read-only loop iterations and materialize only
+// after the loop exits.
+//
+// Why: the pending state would still sit on cycle blocks during the loop,
+// which v1 forbids outright.
+//
+// What a future version could do: leave pending through a read-only loop,
+// then materialize once on the exit edge / before the post-loop write.
+//
+// ```sway
+// fn main(n: u64, order: Order) -> u64 {
+//     let mut order_copy = order;
+//     let mut i = 0;
+//     let mut acc = 0;
+//     while i < n {
+//         acc = consume_read_only(order_copy);
+//         i = i + 1;
+//     }
+//     order_copy.prev = 42;
+//     consume_read_only(order_copy)
+// }
+// ```
+//
+// Expected from memcpy-push-down (v1): opt does nothing —
+//   A = the entry `mem_copy_val` stays put.
+script {
+    entry fn main(n: u64, order: __ptr { u64, u64 }) -> u64 {
+        local mut { u64, u64 } order_copy
+        local mut u64 i
+        local mut u64 acc
+
+        entry(n: u64, order: __ptr { u64, u64 }):
+        v0 = get_local __ptr { u64, u64 }, order_copy
+        mem_copy_val v0, order // <------------------ A (must stay)
+        v1 = get_local __ptr u64, i
+        v2 = const u64 0
+        store v2 to v1
+        v3 = get_local __ptr u64, acc
+        v4 = const u64 0
+        store v4 to v3
+        br while()
+
+        while():
+        v5 = get_local __ptr u64, i
+        v6 = load v5
+        v7 = cmp lt v6 n
+        cbr v7, while_body(), end_while()
+
+        while_body():
+        v8 = get_local __ptr { u64, u64 }, order_copy
+        v9 = call consume_read_only(v8)
+        v10 = get_local __ptr u64, acc
+        store v9 to v10
+        v11 = get_local __ptr u64, i
+        v12 = load v11
+        v13 = const u64 1
+        v14 = add v12, v13
+        store v14 to v11
+        br while()
+
+        end_while():
+        v15 = get_local __ptr { u64, u64 }, order_copy
+        v16 = const u64 1
+        v17 = get_elem_ptr v15, __ptr u64, v16
+        v18 = const u64 42
+        store v18 to v17
+        v19 = get_local __ptr { u64, u64 }, order_copy
+        v20 = call consume_read_only(v19)
+        ret u64 v20
+    }
+
+    fn consume_read_only(order: __ptr { u64, u64 }) -> u64 {
+        entry(order: __ptr { u64, u64 }):
+        v0 = const u64 0
+        v1 = get_elem_ptr order, __ptr u64, v0
+        v2 = load v1
+        ret u64 v2
+    }
+}

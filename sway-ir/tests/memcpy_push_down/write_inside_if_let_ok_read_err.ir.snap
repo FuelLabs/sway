@@ -1,0 +1,49 @@
+---
+source: sway-ir/tests/tests.rs
+---
+Modified: true
+
+script {
+    entry fn main(result: __ptr { u64, u64 }, order: __ptr { u64, u64 }) -> u64 {
+        local mut { u64, u64 } order_copy
+
+        entry(result: __ptr { u64, u64 }, order: __ptr { u64, u64 }):
+        v4v1 = get_local __ptr { u64, u64 }, order_copy
+-         mem_copy_val v4v1, order
+        v6v1 = const u64 0
+        v7v1 = get_elem_ptr result, __ptr u64, v6v1
+        v8v1 = load v7v1
+        v9v1 = const u64 0
+        v10v1 = cmp eq v8v1 v9v1
+        cbr v10v1, arm_ok(), arm_err()
+
+        arm_ok():
+        v12v1 = get_local __ptr { u64, u64 }, order_copy
+        v13v1 = const u64 1
+        v14v1 = get_elem_ptr v12v1, __ptr u64, v13v1
++         v29v1 = get_local __ptr { u64, u64 }, order_copy
++         mem_copy_val v29v1, order
+        v15v1 = const u64 42
+        store v15v1 to v14v1
+        v17v1 = get_local __ptr { u64, u64 }, order_copy
+        v18v1 = call consume_read_only(v17v1)
+        br block_join(v18v1)
+
+        arm_err():
+        v20v1 = get_local __ptr { u64, u64 }, order_copy
+-         v21v1 = call consume_read_only(v20v1)
++         v21v1 = call consume_read_only(order)
+        br block_join(v21v1)
+
+        block_join(v3v1: u64):
+        ret u64 v3v1
+    }
+
+    fn consume_read_only(order: __ptr { u64, u64 }) -> u64 {
+        entry(order: __ptr { u64, u64 }):
+        v25v1 = const u64 0
+        v26v1 = get_elem_ptr order, __ptr u64, v25v1
+        v27v1 = load v26v1
+        ret u64 v27v1
+    }
+}

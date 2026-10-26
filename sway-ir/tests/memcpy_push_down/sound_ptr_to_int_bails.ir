@@ -1,0 +1,42 @@
+// SOUNDNESS: converting the destination pointer to an integer makes its
+// identity observable; the pass must bail.
+//
+// Expected: entry `mem_copy_val` stays put.
+script {
+    entry fn main(flag: bool, order: __ptr { u64, u64 }) -> u64 {
+        local mut { u64, u64 } order_copy
+
+        entry(flag: bool, order: __ptr { u64, u64 }):
+        v0 = get_local __ptr { u64, u64 }, order_copy
+        mem_copy_val v0, order // <------------------ must stay
+        v1 = get_local __ptr { u64, u64 }, order_copy
+        v2 = ptr_to_int v1 to u64
+        cbr flag, block_write(), block_read()
+
+        block_write():
+        v3 = get_local __ptr { u64, u64 }, order_copy
+        v4 = const u64 1
+        v5 = get_elem_ptr v3, __ptr u64, v4
+        v6 = const u64 42
+        store v6 to v5
+        v7 = get_local __ptr { u64, u64 }, order_copy
+        v8 = call consume_read_only(v7)
+        br block_join(v8)
+
+        block_read():
+        v9 = get_local __ptr { u64, u64 }, order_copy
+        v10 = call consume_read_only(v9)
+        br block_join(v10)
+
+        block_join(v11: u64):
+        ret u64 v11
+    }
+
+    fn consume_read_only(order: __ptr { u64, u64 }) -> u64 {
+        entry(order: __ptr { u64, u64 }):
+        v0 = const u64 0
+        v1 = get_elem_ptr order, __ptr u64, v0
+        v2 = load v1
+        ret u64 v2
+    }
+}

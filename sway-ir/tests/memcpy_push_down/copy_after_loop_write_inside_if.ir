@@ -1,0 +1,96 @@
+// Corresponding Sway (this hand-written IR mirrors its lowering):
+//
+// ```sway
+// script;
+//
+// struct Order {
+//     a: u64,
+//     prev: u64,
+// }
+//
+// #[inline(never)]
+// fn consume_read_only(order: Order) -> u64 {
+//     order.a
+// }
+//
+// fn main(n: u64, flag: bool, order: Order) -> u64 {
+//     let mut i = 0;
+//     while i < n {
+//         i = i + 1;
+//     }
+//     let mut order_copy = order;
+//     if flag {
+//         order_copy.prev = 42;
+//         consume_read_only(order_copy)
+//     } else {
+//         consume_read_only(order_copy)
+//     }
+// }
+// ```
+//
+// The candidate copy is created *after* an unrelated loop. The pending
+// region never touches a cycle, so this must behave exactly like
+// `write_inside_if_read_inside_else_join`.
+//
+// Expected from memcpy-push-down:
+//   A = the post-loop `mem_copy_val` disappears,
+//   B = a copy materializes in `block_write`, just before the store,
+//   C = `block_read` calls `consume_read_only` on the source argument directly,
+//   D = nothing is copied at the (dead) join.
+script {
+    entry fn main(n: u64, flag: bool, order: __ptr { u64, u64 }) -> u64 {
+        local mut { u64, u64 } order_copy
+        local mut u64 i
+
+        entry(n: u64, flag: bool, order: __ptr { u64, u64 }):
+        v0 = get_local __ptr u64, i
+        v1 = const u64 0
+        store v1 to v0
+        br while()
+
+        while():
+        v2 = get_local __ptr u64, i
+        v3 = load v2
+        v4 = cmp lt v3 n
+        cbr v4, while_body(), end_while()
+
+        while_body():
+        v5 = get_local __ptr u64, i
+        v6 = load v5
+        v7 = const u64 1
+        v8 = add v6, v7
+        store v8 to v5
+        br while()
+
+        end_while():
+        v9 = get_local __ptr { u64, u64 }, order_copy
+        mem_copy_val v9, order // <------------------ A
+        cbr flag, block_write(), block_read()
+
+        block_write():
+        v10 = get_local __ptr { u64, u64 }, order_copy
+        v11 = const u64 1
+        v12 = get_elem_ptr v10, __ptr u64, v11
+        v13 = const u64 42
+        store v13 to v12 // <------------------ B (first write: copy materializes just above this)
+        v14 = get_local __ptr { u64, u64 }, order_copy
+        v15 = call consume_read_only(v14)
+        br block_join(v15)
+
+        block_read():
+        v16 = get_local __ptr { u64, u64 }, order_copy
+        v17 = call consume_read_only(v16) // <------------------ C
+        br block_join(v17)
+
+        block_join(v18: u64): // <------------------ D
+        ret u64 v18
+    }
+
+    fn consume_read_only(order: __ptr { u64, u64 }) -> u64 {
+        entry(order: __ptr { u64, u64 }):
+        v0 = const u64 0
+        v1 = get_elem_ptr order, __ptr u64, v0
+        v2 = load v1
+        ret u64 v2
+    }
+}

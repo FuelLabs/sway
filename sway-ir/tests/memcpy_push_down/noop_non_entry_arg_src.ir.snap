@@ -1,0 +1,33 @@
+---
+source: sway-ir/tests/tests.rs
+---
+Modified: false
+
+script {
+    entry fn main(flag: bool, order: __ptr { u64, u64 }) -> u64 {
+        local mut { u64, u64 } order_copy
+
+        entry(mut flag: bool, order: __ptr { u64, u64 }):
+        cbr flag, with_arg(order), with_arg(order)
+
+        with_arg(v3v1: __ptr { u64, u64 }):
+        v5v1 = get_local __ptr { u64, u64 }, order_copy
+        mem_copy_val v5v1, v3v1
+        v7v1 = get_local __ptr { u64, u64 }, order_copy
+        v8v1 = const u64 1
+        v9v1 = get_elem_ptr v7v1, __ptr u64, v8v1
+        v10v1 = const u64 42
+        store v10v1 to v9v1
+        v12v1 = get_local __ptr { u64, u64 }, order_copy
+        v13v1 = call consume_read_only(v12v1)
+        ret u64 v13v1
+    }
+
+    fn consume_read_only(order: __ptr { u64, u64 }) -> u64 {
+        entry(order: __ptr { u64, u64 }):
+        v16v1 = const u64 0
+        v17v1 = get_elem_ptr order, __ptr u64, v16v1
+        v18v1 = load v17v1
+        ret u64 v18v1
+    }
+}

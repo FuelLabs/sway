@@ -12,18 +12,22 @@
 //!   materialized so that the joined state is uniform.
 //!
 //! The analysis is deliberately conservative: it only handles copies whose
-//! source and destination are single, non-escaped symbols with complete
-//! pointer provenance, and it bails out if the pending region would cross a
-//! CFG cycle (loop), where a sunk copy could otherwise be re-executed.
+//! source and destination are single symbols with complete pointer
+//! provenance, whose pointers are never captured (stored, returned, or
+//! converted to integers), and it bails out if the pending region would
+//! cross a CFG cycle (loop), where a sunk copy could otherwise be
+//! re-executed. Passing a pointer to a mutable callee is *not* a capture:
+//! like `memcpyopt`, this pass assumes callees do not retain argument
+//! pointers beyond the call, and materializes the copy before such calls.
 
 use rustc_hash::{FxHashMap, FxHashSet};
 use sway_types::FxIndexSet;
 
 use crate::{
-    compute_post_order, get_loaded_ptr_values, get_memory_offsets, get_referred_symbol,
-    get_referred_symbols, get_stored_ptr_values, AnalysisResults, Block, Context, EscapedSymbols,
-    Function, InstOp, Instruction, InstructionInserter, IrError, LocalVar, Pass, PassMutability,
-    ReferredSymbols, ScopedPass, Symbol, Type, Value, ValueDatum, ESCAPED_SYMBOLS_NAME,
+    compute_dom_tree_from_po, compute_post_order, get_loaded_ptr_values, get_memory_offsets,
+    get_referred_symbol, get_referred_symbols, get_stored_ptr_values, AnalysisResults, Block,
+    Context, Function, InstOp, Instruction, InstructionInserter, IrError, LocalVar, Pass,
+    PassMutability, ReferredSymbols, ScopedPass, Symbol, Type, Value, ValueDatum,
 };
 
 pub const MEMCPY_PUSH_DOWN_NAME: &str = "memcpy-push-down";
@@ -32,7 +36,7 @@ pub fn create_memcpy_push_down_pass() -> Pass {
     Pass {
         name: MEMCPY_PUSH_DOWN_NAME,
         descr: "Push mem_copy_val down the CFG, materializing only where needed",
-        deps: vec![ESCAPED_SYMBOLS_NAME],
+        deps: vec![],
         runner: ScopedPass::FunctionPass(PassMutability::Transform(memcpy_push_down)),
     }
 }
@@ -323,48 +327,78 @@ fn analyze_ptr_chain(context: &Context, ptr: Value, dst_local: LocalVar) -> Opti
     }
 }
 
-/// Blocks that participate in a CFG cycle (cannot be pruned as sinks).
-fn cycle_blocks(context: &Context, function: Function) -> FxHashSet<Block> {
-    let blocks: Vec<Block> = function.block_iter(context).collect();
-    let mut succ_count: FxHashMap<Block, usize> = FxHashMap::default();
-    let mut preds: FxHashMap<Block, Vec<Block>> = FxHashMap::default();
-    for block in &blocks {
-        let succs = block.successors(context);
-        succ_count.insert(*block, succs.len());
-        for succ in succs {
-            preds.entry(succ.block).or_default().push(*block);
-        }
-    }
-    let mut queue: Vec<Block> = blocks
-        .iter()
-        .filter(|b| succ_count[b] == 0)
-        .copied()
-        .collect();
-    let mut removed: FxHashSet<Block> = FxHashSet::default();
-    while let Some(block) = queue.pop() {
-        if !removed.insert(block) {
+/// True when `candidate.inst` already materializes the copy immediately
+/// before `force`: only constants / a `get_local` of the destination lie
+/// between them in the same block. Stops the pass from re-inserting a copy
+/// that a previous rewrite already placed at its final forcing site.
+fn candidate_already_at_force(
+    context: &Context,
+    candidate: &Candidate,
+    force: Value,
+) -> bool {
+    let mut after_candidate = false;
+    for inst in candidate.block.instruction_iter(context) {
+        if inst == candidate.inst {
+            after_candidate = true;
             continue;
         }
-        for pred in preds.get(&block).cloned().unwrap_or_default() {
-            let count = succ_count.get_mut(&pred).unwrap();
-            *count -= 1;
-            if *count == 0 {
-                queue.push(pred);
+        if !after_candidate {
+            continue;
+        }
+        if inst == force {
+            return true;
+        }
+        if inst.is_constant(context) {
+            continue;
+        }
+        if let Some(Instruction {
+            op: InstOp::GetLocal(local),
+            ..
+        }) = inst.get_instruction(context)
+        {
+            if *local == candidate.dst_local {
+                continue;
             }
         }
+        return false;
     }
-    blocks
-        .iter()
-        .filter(|b| !removed.contains(b))
-        .copied()
-        .collect()
+    false
 }
 
-fn find_candidates(
-    context: &Context,
-    function: Function,
-    escaped: &FxHashSet<Symbol>,
-) -> Vec<Candidate> {
+/// Blocks that can reach themselves in the CFG (members of a cycle).
+///
+/// Note: sink-pruning is *not* used here. That over-approximates by also
+/// marking the stem into a loop (e.g. `entry` before a `while`) as cyclic,
+/// which would disable every candidate that merely precedes a loop.
+fn cycle_blocks(context: &Context, function: Function) -> FxHashSet<Block> {
+    let blocks: Vec<Block> = function.block_iter(context).collect();
+    let mut in_cycle = FxHashSet::default();
+    for &start in &blocks {
+        let mut stack = vec![start];
+        let mut visited = FxHashSet::default();
+        let mut found = false;
+        while let Some(block) = stack.pop() {
+            for succ in block.successors(context) {
+                if succ.block == start {
+                    found = true;
+                    break;
+                }
+                if visited.insert(succ.block) {
+                    stack.push(succ.block);
+                }
+            }
+            if found {
+                break;
+            }
+        }
+        if found {
+            in_cycle.insert(start);
+        }
+    }
+    in_cycle
+}
+
+fn find_candidates(context: &Context, function: Function) -> Vec<Candidate> {
     let mut candidates = Vec::new();
     for (block, inst) in function.instruction_iter(context) {
         let InstOp::MemCopyVal {
@@ -396,10 +430,7 @@ fn find_candidates(
             }
             _ => continue,
         };
-        if dst_sym == src_sym
-            || escaped.contains(&dst_sym)
-            || escaped.contains(&src_sym)
-            || dst_val_ptr.get_type(context) != src_val_ptr.get_type(context)
+        if dst_sym == src_sym || dst_val_ptr.get_type(context) != src_val_ptr.get_type(context)
         {
             continue;
         }
@@ -424,6 +455,9 @@ struct Plan {
     edge_inserts: Vec<Block>,
     delegated_reads: usize,
     off_block_materializations: usize,
+    /// The candidate already sits at a forcing site; keep it instead of
+    /// deleting and re-inserting.
+    keep_candidate: bool,
 }
 
 /// Try to push a single candidate copy down. Returns `Ok(true)` if the IR was
@@ -432,9 +466,7 @@ fn push_down_candidate(
     context: &mut Context,
     function: Function,
     candidate: &Candidate,
-    escaped: &FxHashSet<Symbol>,
 ) -> Result<bool, IrError> {
-    let _ = escaped;
     let blocks: Vec<Block> = function.block_iter(context).collect();
     let post_order = compute_post_order(context, &function);
     let reachable: FxHashSet<Block> = post_order.po_to_block.iter().copied().collect();
@@ -460,6 +492,37 @@ fn push_down_candidate(
         block_accesses.insert(*block, insts);
     }
 
+    // A mutable use (mutable call argument, asm operand) of either pointer
+    // must not be able to execute before the candidate copy: a pointer
+    // handed out before the copy exists could be used to write through an
+    // alias we cannot track during the pending window. Mutable uses after
+    // the candidate are fine -- they force materialization (see below).
+    {
+        let dom_tree = compute_dom_tree_from_po(context, function, &post_order);
+        let candidate_pos = candidate
+            .block
+            .instruction_iter(context)
+            .position(|inst| inst == candidate.inst)
+            .unwrap_or(usize::MAX);
+        for (block, insts) in &block_accesses {
+            for (idx, (_, accesses)) in insts.iter().enumerate() {
+                if !accesses.iter().any(|a| a.kind == AccessKind::MayWrite) {
+                    continue;
+                }
+                let after_candidate = if *block == candidate.block {
+                    // `insts` omits the candidate itself, so an entry at
+                    // index `candidate_pos` or later follows the candidate.
+                    idx >= candidate_pos
+                } else {
+                    dom_tree.dominates(candidate.block, *block)
+                };
+                if !after_candidate {
+                    return Ok(false);
+                }
+            }
+        }
+    }
+
     // Transfer function: scan one block under an in-state, optionally
     // recording the plan.
     let scan = |block: Block,
@@ -483,9 +546,13 @@ fn push_down_candidate(
                     .any(|a| a.sym == candidate.dst_sym && a.kind == AccessKind::FullWrite);
                 if !full_dst_overwrite {
                     if let Some(plan) = plan.as_deref_mut() {
-                        plan.inserts.push(*inst);
-                        if block != candidate.block {
-                            plan.off_block_materializations += 1;
+                        if candidate_already_at_force(context, candidate, *inst) {
+                            plan.keep_candidate = true;
+                        } else {
+                            plan.inserts.push(*inst);
+                            if block != candidate.block {
+                                plan.off_block_materializations += 1;
+                            }
                         }
                     }
                 }
@@ -551,7 +618,11 @@ fn push_down_candidate(
                     .any(|a| a.sym == candidate.dst_sym && a.kind == AccessKind::FullWrite);
                 if !full_dst_overwrite {
                     if let Some(plan) = plan.as_deref_mut() {
-                        plan.inserts.push(inst);
+                        if candidate_already_at_force(context, candidate, inst) {
+                            plan.keep_candidate = true;
+                        } else {
+                            plan.inserts.push(inst);
+                        }
                     }
                 }
                 state = State::Materialized;
@@ -665,8 +736,15 @@ fn push_down_candidate(
     }
 
     // The pending region must not cross a CFG cycle: a copy inserted inside a
-    // loop body would be re-executed every iteration.
+    // loop body would be re-executed every iteration. Mid-block Pending is
+    // invisible to the in/out check, so a candidate that itself lives in a
+    // cycle is also rejected. The join at a loop header can further "hide"
+    // pending by reconciling to Materialized and forcing a preheader edge
+    // copy -- v1 still bails on that so a sunk copy can never ride a backedge.
     let cycles = cycle_blocks(context, function);
+    if cycles.contains(&candidate.block) {
+        return Ok(false);
+    }
     for block in &rpo {
         let pending_in = in_state.get(block).map(|(s, _)| *s) == Some(State::Pending);
         let pending_out = out_state.get(block).copied() == Some(State::Pending);
@@ -674,14 +752,46 @@ fn push_down_candidate(
             return Ok(false);
         }
     }
+    for pred in &forced {
+        if pred
+            .successors(context)
+            .iter()
+            .any(|succ| cycles.contains(&succ.block))
+        {
+            return Ok(false);
+        }
+        // A forced pred with multiple successors is a critical-edge join:
+        // inserting at the pred terminator would also run on edges that do
+        // not need the copy. v1 does not split critical edges, so bail.
+        if pred.successors(context).len() > 1 {
+            return Ok(false);
+        }
+    }
 
     // Build the final plan.
+    let mut keep_candidate = false;
+    let mut edge_inserts = Vec::new();
+    for pred in &forced {
+        let terminator = pred
+            .instruction_iter(context)
+            .last()
+            .expect("block must have a terminator");
+        if candidate.block == *pred
+            && candidate_already_at_force(context, candidate, terminator)
+        {
+            // A previous rewrite already parked the copy on this edge.
+            keep_candidate = true;
+        } else {
+            edge_inserts.push(*pred);
+        }
+    }
     let mut plan = Plan {
         rewrites: Vec::new(),
         inserts: Vec::new(),
-        edge_inserts: forced.iter().copied().collect(),
+        edge_inserts,
         delegated_reads: 0,
-        off_block_materializations: forced.len(),
+        off_block_materializations: forced.iter().filter(|b| **b != candidate.block).count(),
+        keep_candidate,
     };
     for block in &rpo {
         let (state_in, _) = in_state.get(block).copied().unwrap_or((State::NoCopy, false));
@@ -692,8 +802,11 @@ fn push_down_candidate(
     }
 
     // Profitability: at least one read must be delegated, or the copy must
-    // move out of its original block.
-    if plan.delegated_reads == 0 && plan.off_block_materializations == 0 {
+    // move (later in the same block, to another block, or onto a join edge).
+    if plan.delegated_reads == 0
+        && plan.inserts.is_empty()
+        && plan.edge_inserts.is_empty()
+    {
         return Ok(false);
     }
 
@@ -751,29 +864,26 @@ fn push_down_candidate(
         inst.replace_instruction_value(context, *old_ptr, cur);
     }
 
-    function.remove_instructions(context, |v| v == candidate.inst);
+    if !plan.keep_candidate {
+        function.remove_instructions(context, |v| v == candidate.inst);
+    }
     Ok(true)
 }
 
 pub fn memcpy_push_down(
     context: &mut Context,
-    analyses: &AnalysisResults,
+    _analyses: &AnalysisResults,
     function: Function,
 ) -> Result<bool, IrError> {
-    let escaped = match analyses.get_analysis_result(function) {
-        EscapedSymbols::Complete(syms) => syms.clone(),
-        EscapedSymbols::Incomplete(_) => return Ok(false),
-    };
-
     let mut modified = false;
     // Restart after each successful rewrite: classifications are stale as
     // soon as the IR changes. Each rewrite removes one candidate copy, so
     // this always terminates.
     for _ in 0..64 {
-        let candidates = find_candidates(context, function, &escaped);
+        let candidates = find_candidates(context, function);
         let mut progressed = false;
         for candidate in &candidates {
-            if push_down_candidate(context, function, candidate, &escaped)? {
+            if push_down_candidate(context, function, candidate)? {
                 modified = true;
                 progressed = true;
                 break;

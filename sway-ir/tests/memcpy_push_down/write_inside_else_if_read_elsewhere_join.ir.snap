@@ -1,0 +1,53 @@
+---
+source: sway-ir/tests/tests.rs
+---
+Modified: true
+
+script {
+    entry fn main(c1: bool, c2: bool, order: __ptr { u64, u64 }) -> u64 {
+        local mut { u64, u64 } order_copy
+
+        entry(mut c1: bool, mut c2: bool, order: __ptr { u64, u64 }):
+        v5v1 = get_local __ptr { u64, u64 }, order_copy
+-         mem_copy_val v5v1, order
+        cbr c1, block_write(), block_elseif()
+
+        block_write():
+        v8v1 = get_local __ptr { u64, u64 }, order_copy
+        v9v1 = const u64 1
+        v10v1 = get_elem_ptr v8v1, __ptr u64, v9v1
++         v29v1 = get_local __ptr { u64, u64 }, order_copy
++         mem_copy_val v29v1, order
+        v11v1 = const u64 42
+        store v11v1 to v10v1
+        v13v1 = get_local __ptr { u64, u64 }, order_copy
+        v14v1 = call consume_read_only(v13v1)
+        br block_join(v14v1)
+
+        block_elseif():
+        cbr c2, block_read_mid(), block_read_else()
+
+        block_read_mid():
+        v17v1 = get_local __ptr { u64, u64 }, order_copy
+-         v18v1 = call consume_read_only(v17v1)
++         v18v1 = call consume_read_only(order)
+        br block_join(v18v1)
+
+        block_read_else():
+        v20v1 = get_local __ptr { u64, u64 }, order_copy
+-         v21v1 = call consume_read_only(v20v1)
++         v21v1 = call consume_read_only(order)
+        br block_join(v21v1)
+
+        block_join(v4v1: u64):
+        ret u64 v4v1
+    }
+
+    fn consume_read_only(order: __ptr { u64, u64 }) -> u64 {
+        entry(order: __ptr { u64, u64 }):
+        v25v1 = const u64 0
+        v26v1 = get_elem_ptr order, __ptr u64, v25v1
+        v27v1 = load v26v1
+        ret u64 v27v1
+    }
+}

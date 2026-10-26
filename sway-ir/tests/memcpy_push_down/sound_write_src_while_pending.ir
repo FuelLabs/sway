@@ -1,0 +1,55 @@
+// SOUNDNESS: writing the *source* while the copy is still pending must
+// materialize first. Otherwise a later use of `order_copy` would observe the
+// mutated source (as if the buffers were still shared).
+//
+// ```sway
+// fn main(flag: bool, order: Order) -> u64 {
+//     let mut order_copy = order;
+//     if flag {
+//         order.a = 99; // write SRC
+//         consume_read_only(order_copy) // must see the *old* value
+//     } else {
+//         consume_read_only(order_copy)
+//     }
+// }
+// ```
+//
+// Expected:
+//   A = entry copy disappears,
+//   B = a copy materializes in `block_mutate_src` *before* the store to `order`,
+//   C = `block_read` delegates to `order`.
+script {
+    entry fn main(flag: bool, order: __ptr { u64, u64 }) -> u64 {
+        local mut { u64, u64 } order_copy
+
+        entry(flag: bool, order: __ptr { u64, u64 }):
+        v0 = get_local __ptr { u64, u64 }, order_copy
+        mem_copy_val v0, order // <------------------ A
+        cbr flag, block_mutate_src(), block_read()
+
+        block_mutate_src():
+        v1 = const u64 0
+        v2 = get_elem_ptr order, __ptr u64, v1
+        v3 = const u64 99
+        store v3 to v2 // <------------------ B (copy must appear just above)
+        v4 = get_local __ptr { u64, u64 }, order_copy
+        v5 = call consume_read_only(v4)
+        br block_join(v5)
+
+        block_read():
+        v6 = get_local __ptr { u64, u64 }, order_copy
+        v7 = call consume_read_only(v6) // <------------------ C
+        br block_join(v7)
+
+        block_join(v8: u64):
+        ret u64 v8
+    }
+
+    fn consume_read_only(order: __ptr { u64, u64 }) -> u64 {
+        entry(order: __ptr { u64, u64 }):
+        v0 = const u64 0
+        v1 = get_elem_ptr order, __ptr u64, v0
+        v2 = load v1
+        ret u64 v2
+    }
+}

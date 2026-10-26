@@ -1,0 +1,65 @@
+// Corresponding Sway (this hand-written IR mirrors its lowering; the early
+// `return` is why each branch returns directly instead of joining):
+//
+// ```sway
+// script;
+//
+// struct Order {
+//     a: u64,
+//     b: u64,
+//     c: u64,
+//     prev: u64,
+// }
+//
+// #[inline(never)]
+// fn consume_read_only(order: Order) -> u64 {
+//     order.a
+// }
+//
+// fn main(flag: bool, order: Order) -> u64 {
+//     let mut order_copy = order;
+//     if flag {
+//         order_copy.prev = 42;
+//         return consume_read_only(order_copy);
+//     }
+//     consume_read_only(order_copy)
+// }
+// ```
+//
+// Expected from memcpy-push-down:
+//   A = the entry `mem_copy_val` disappears,
+//   B = a copy materializes in `block_write`, just before the store,
+//   C = `block_read` calls `consume_read_only` on the source argument directly.
+script {
+    entry fn main(flag: bool, order: __ptr { u64, u64, u64, u64 }) -> u64 {
+        local mut { u64, u64, u64, u64 } order_copy
+
+        entry(flag: bool, order: __ptr { u64, u64, u64, u64 }):
+        v0 = get_local __ptr { u64, u64, u64, u64 }, order_copy
+        mem_copy_val v0, order // <------------------ A
+        cbr flag, block_write(), block_read()
+
+        block_write():
+        v1 = get_local __ptr { u64, u64, u64, u64 }, order_copy
+        v2 = const u64 3
+        v3 = get_elem_ptr v1, __ptr u64, v2
+        v4 = const u64 42
+        store v4 to v3 // <------------------ B (first write: copy materializes just above this)
+        v5 = get_local __ptr { u64, u64, u64, u64 }, order_copy
+        v6 = call consume_read_only(v5)
+        ret u64 v6
+
+        block_read():
+        v7 = get_local __ptr { u64, u64, u64, u64 }, order_copy
+        v8 = call consume_read_only(v7) // <------------------ C
+        ret u64 v8
+    }
+
+    fn consume_read_only(order: __ptr { u64, u64, u64, u64 }) -> u64 {
+        entry(order: __ptr { u64, u64, u64, u64 }):
+        v0 = const u64 0
+        v1 = get_elem_ptr order, __ptr u64, v0
+        v2 = load v1
+        ret u64 v2
+    }
+}
