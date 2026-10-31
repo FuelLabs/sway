@@ -74,12 +74,14 @@ pub(crate) fn liveness_analysis(
             let mut local_modified = false;
             let rev_ix = ops.len() - ix - 1;
 
-            // Get use and def vectors without any of the Constant registers
+            // Get use and def vectors, including special-register definitions when requested.
             let mut op_use = op.use_registers();
             let mut op_def = op.def_registers();
             if ignore_constant_regs {
                 op_use.retain(|&reg| reg.is_virtual());
                 op_def.retain(|&reg| reg.is_virtual());
+            } else {
+                op_def.append(&mut op.def_const_registers());
             }
 
             // Compute live_out(op) = live_in(s_1) UNION live_in(s_2) UNION ..., where s1, s_2, ...
