@@ -1,4 +1,4 @@
-#!/bin/bash
+#! /usr/bin/env bash
 
 # This script calculates a simple statistical summary of performance differences
 # collected from two CSV files, by using `perf-diff.sh` to compute the diffs first.

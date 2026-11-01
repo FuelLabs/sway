@@ -1,4 +1,4 @@
-#!/bin/bash
+#! /usr/bin/env bash
 
 # This script extracts full test names and test gas usages from a `forc test` output.
 # The output is a CSV with two columns, test name, and gas usage.

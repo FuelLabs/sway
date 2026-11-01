@@ -1,4 +1,4 @@
-#!/bin/bash
+#! /usr/bin/env bash
 
 # This script finds the latest two performance CSV files for a given performance category,
 # e.g., `e2e-gas-usages`, in `./test/perf_out`, orders them by their timestamp prefix,
