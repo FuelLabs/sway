@@ -1,4 +1,4 @@
 category = "fail"
 
 #check: $()const CONSTANT: u64 = VALUE;
-#nextln: $()Could not evaluate initializer to a const declaration.
+#nextln: $()Configurable values can be changed after compilation, so they cannot be used in constant expressions.

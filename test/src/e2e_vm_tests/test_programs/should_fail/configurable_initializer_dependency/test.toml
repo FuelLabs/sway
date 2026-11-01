@@ -1,0 +1,4 @@
+category = "fail"
+
+#check: $()SECOND: u64 = FIRST + 1,
+#nextln: $()Configurable values can be changed after compilation, so they cannot be used in constant expressions.
