@@ -9,37 +9,55 @@ license.workspace = true
 repository.workspace = true
 
 [features]
-tx = ["dep:fuel-tx", "dep:fuel-abi-types", "dep:fuels-core"]
+default = ["bytecode", "cli", "diagnostics", "fs-locking", "restricted"]
+bytecode = ["dep:fuel-asm", "dep:sha2"]
+cli = ["dep:ansiterm", "dep:forc-tracing", "dep:paste"]
+diagnostics = [
+    "dep:annotate-snippets",
+    "dep:ansiterm",
+    "dep:forc-tracing",
+    "dep:sway-core",
+    "dep:sway-error",
+    "dep:sway-types",
+    "dep:tracing",
+]
+fs-locking = ["dep:fd-lock"]
+restricted = ["dep:regex", "dep:unicode-xid"]
+tx = [
+    "dep:clap",
+    "dep:fuel-tx",
+    "dep:fuel-abi-types",
+    "dep:fuels-core",
+    "dep:hex",
+    "dep:serde",
+    "dep:serde_json",
+    "dep:sway-core",
+]
 
 [dependencies]
-annotate-snippets.workspace = true
-ansiterm.workspace = true
+annotate-snippets = { workspace = true, optional = true }
+ansiterm = { workspace = true, optional = true }
 anyhow.workspace = true
-clap = { workspace = true, features = ["cargo", "derive", "env"] }
+clap = { workspace = true, optional = true, features = ["cargo", "derive", "env"] }
 dirs.workspace = true
-fd-lock.workspace = true
-forc-tracing.workspace = true
+fd-lock = { workspace = true, optional = true }
+forc-tracing = { workspace = true, optional = true }
 fuel-abi-types = { workspace = true, optional = true }
-fuel-asm.workspace = true
+fuel-asm = { workspace = true, optional = true }
 fuel-tx = { workspace = true, optional = true }
 fuels-core = { workspace = true, optional = true }
-hex.workspace = true
-paste.workspace = true
-regex.workspace = true
-serde = { workspace = true, features = ["derive"] }
-serde_json.workspace = true
-sha2.workspace = true
-sway-core.workspace = true
-sway-error.workspace = true
-sway-types.workspace = true
+hex = { workspace = true, optional = true }
+paste = { workspace = true, optional = true }
+regex = { workspace = true, optional = true }
+serde = { workspace = true, optional = true, features = ["derive"] }
+serde_json = { workspace = true, optional = true }
+sha2 = { workspace = true, optional = true }
+sway-core = { workspace = true, optional = true }
+sway-error = { workspace = true, optional = true }
+sway-types = { workspace = true, optional = true }
 sway-utils.workspace = true
-tracing.workspace = true
-tracing-subscriber = { workspace = true, features = [
-    "ansi",
-    "env-filter",
-    "json",
-] }
-unicode-xid.workspace = true
+tracing = { workspace = true, optional = true }
+unicode-xid = { workspace = true, optional = true }
 
 [dev-dependencies]
 mark-flaky-tests.workspace = true
