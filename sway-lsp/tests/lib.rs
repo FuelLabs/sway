@@ -2438,6 +2438,9 @@ async fn garbage_collection_runner(path: PathBuf) {
 fn garbage_collection_tests() -> Result<(), String> {
     let mut tests = vec![
         // TODO: Enable this test once https://github.com/FuelLabs/sway/issues/6687 is fixed.
+        //       Note that the `should_pass/stdlib` tests that `e2e_stdlib_dir` was pointing
+        //       to are moved to `in_language_tests`. Adjust the below path accordingly when
+        //       enabling the tests.
         // (
         //     "option_eq".into(),
         //     sway_workspace_dir()
@@ -2489,12 +2492,6 @@ fn garbage_collection_all_should_pass_tests() -> Result<(), String> {
 #[ignore = "Additional stress test for GC. Run it locally when working on code that affects GC."]
 fn garbage_collection_all_should_fail_tests() -> Result<(), String> {
     run_garbage_collection_tests_from_projects_dir(e2e_should_fail_dir())
-}
-
-#[test]
-#[ignore = "Additional stress test for GC. Run it locally when working on code that affects GC."]
-fn garbage_collection_all_stdlib_tests() -> Result<(), String> {
-    run_garbage_collection_tests_from_projects_dir(e2e_stdlib_dir())
 }
 
 /// Parallel test runner for garbage collection tests across Sway projects defined by `tests`.

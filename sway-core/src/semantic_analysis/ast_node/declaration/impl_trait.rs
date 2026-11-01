@@ -96,6 +96,7 @@ impl TyImplSelfOrTrait {
         handler: &Handler,
         mut ctx: TypeCheckContext,
         impl_trait: &ImplSelfOrTrait,
+        reserved_impl_trait_decl_id: &ReservedDeclId<ty::TyImplSelfOrTrait>,
     ) -> Result<Self, ErrorEmitted> {
         // If the impl trait represents an attempt to explicit implement a marker trait
         // we will emit an error, but do not want to bail out. We still want to check
@@ -311,6 +312,7 @@ impl TyImplSelfOrTrait {
                             &trait_decl.span(),
                             block_span,
                             false,
+                            reserved_impl_trait_decl_id,
                         )?;
                         ty::TyImplSelfOrTrait {
                             impl_type_parameters: new_impl_type_parameters,
@@ -389,6 +391,7 @@ impl TyImplSelfOrTrait {
                             &abi.span(),
                             block_span,
                             true,
+                            reserved_impl_trait_decl_id,
                         )?;
 
                         // Check that the contract doesn't have selector collisions
@@ -620,14 +623,32 @@ impl TyImplSelfOrTrait {
                 let mut new_items = vec![];
 
                 handler.scope(|handler| {
+                    // Reserve the decl slot for the impl block decl before type checking
+                    // its items. This way, the `impl_trait_decl` can be set as the
+                    // `implementing_type` of the function items already at their creation,
+                    // although the impl block decl itself can be created only after all
+                    // of its items are known.
+                    let reserved_impl_trait = decl_engine.reserve(engines, *parsed_decl_id);
+                    let impl_trait_decl = TyDecl::ImplSelfOrTrait(ty::ImplSelfOrTrait {
+                        decl_id: reserved_impl_trait.id(),
+                    });
+
+                    // The reserved decl ids for filling the decl slots of the function
+                    // items during the body type checking passes below, stored per
+                    // function decl id.
+                    let mut reserved_fn_decl_ids: BTreeMap<
+                        DeclId<ty::TyFunctionDecl>,
+                        ReservedDeclId<ty::TyFunctionDecl>,
+                    > = BTreeMap::new();
+
                     for item in items.iter() {
                         match item {
                             // For function items, we are type-checking only the signature
                             // here and obtain the `fn_decl` based only on the signature.
                             // The function body is type-checked in a separate step below.
-                            ImplItem::Fn(id) => {
-                                let fn_decl = engines.pe().get_function(id);
-                                let Ok(fn_decl) = ty::TyFunctionDecl::type_check_signature(
+                            ImplItem::Fn(parsed_decl_id) => {
+                                let fn_decl = engines.pe().get_function(parsed_decl_id);
+                                let Ok(mut fn_decl) = ty::TyFunctionDecl::type_check_signature(
                                     handler,
                                     ctx.by_ref(),
                                     &fn_decl,
@@ -637,7 +658,24 @@ impl TyImplSelfOrTrait {
                                 ) else {
                                     continue;
                                 };
-                                new_items.push(TyImplItem::Fn(decl_engine.insert(fn_decl, *id)));
+                                // The function item is born with its `implementing_type`
+                                // already set, pointing to the reserved impl block decl.
+                                // This also guarantees that the `implementing_type` is set
+                                // even on the function items whose body type checking below
+                                // fails. Such functions can still have perfectly valid
+                                // signatures, and must remain visible to method lookups,
+                                // which skip methods whose `implementing_type` is `None`.
+                                fn_decl.set_implementing_type(impl_trait_decl.clone());
+
+                                let reserved = decl_engine.reserve(engines, *parsed_decl_id);
+                                let decl_ref = DeclRef::new(
+                                    fn_decl.name.clone(),
+                                    reserved.id(),
+                                    fn_decl.span.clone(),
+                                );
+                                decl_engine.fill(&reserved, fn_decl);
+                                reserved_fn_decl_ids.insert(reserved.id(), reserved);
+                                new_items.push(TyImplItem::Fn(decl_ref));
                             }
                             ImplItem::Constant(decl_id) => {
                                 let const_decl = &*engines.pe().get_constant(decl_id);
@@ -688,6 +726,17 @@ impl TyImplSelfOrTrait {
                         implementing_for,
                     };
 
+                    // Fill the reserved impl block decl before inserting the trait
+                    // implementation into the trait map below. The trait map insertion,
+                    // as well as everything that comes after it, can reach the impl block
+                    // decl through the `implementing_type` of the function items.
+                    //
+                    // Note that at this point, **the filled impl block decl contains the
+                    // function item decl ids coming from the signature type checking**.
+                    // The content behind those ids is afterwards modified by the body
+                    // type checking, but always **filled in-place under the same decl ids**.
+                    decl_engine.fill(&reserved_impl_trait, impl_trait.clone());
+
                     ctx.insert_trait_implementation(
                         handler,
                         impl_trait.trait_name.clone(),
@@ -704,35 +753,6 @@ impl TyImplSelfOrTrait {
                         IsExtendingExistingImpl::No,
                         IsImplInterfaceSurface::No,
                     )?;
-
-                    // Insert the impl trait decl before type checking the function items' bodies below.
-                    // This way, the resulting `impl_trait_decl` can be set as the `implementing_type`
-                    // of the function items during the body type checking.
-                    //
-                    // Note that at this point, **the inserted impl trait decl contains the
-                    // function item decl ids coming from the signature type checking**. The content
-                    // behind those ids is afterwards modified by the body type checking,
-                    // but always **replaced in-place under the same decl ids**.
-                    let impl_trait_decl: TyDecl = decl_engine
-                        .insert(impl_trait.clone(), *parsed_decl_id)
-                        .into();
-
-                    // Set the `implementing_type` on all the function items, in-place,
-                    // under the decl ids coming from the signature type checking, which
-                    // are already registered in the trait map.
-                    // Setting it once here is sufficient, because all the subsequent
-                    // modifications of the function items preserve the `implementing_type`.
-                    // This also guarantees that the `implementing_type` is set even on
-                    // the function items whose body type checking fails. Such functions
-                    // can still have perfectly valid signatures, and must remain visible
-                    // to method lookups, which skip methods whose `implementing_type` is `None`.
-                    for item in impl_trait.items.iter() {
-                        if let TyTraitItem::Fn(decl_ref) = item {
-                            let mut fn_decl = (*decl_engine.get_function(decl_ref.id())).clone();
-                            fn_decl.set_implementing_type(impl_trait_decl.clone());
-                            decl_engine.replace(*decl_ref.id(), fn_decl);
-                        }
-                    }
 
                     let new_items = &impl_trait.items;
                     for (item, new_item) in items.clone().into_iter().zip(new_items) {
@@ -754,10 +774,13 @@ impl TyImplSelfOrTrait {
                                 // checking above, is already registered in the trait map and can be
                                 // captured by this impl block's sibling calls during the body
                                 // type checking. The function body must therefore be delivered
-                                // in-place, under that same decl id, and not inserted as a
-                                // modified copy under a new decl id.
-                                // In other words, we **must use `replace` here, and not `insert_modified`**.
-                                decl_engine.replace(*decl_ref.id(), new_ty_fn_decl);
+                                // in-place, under that same decl id - by filling the function's
+                                // reserved decl slot, and not by inserting a modified copy under
+                                // a new decl id.
+                                let reserved_id = reserved_fn_decl_ids
+                                    .get(decl_ref.id())
+                                    .expect("every function item has a reserved decl id");
+                                decl_engine.fill(reserved_id, new_ty_fn_decl);
                             }
                             (ImplItem::Constant(_const_decl), TyTraitItem::Constant(_decl_ref)) => {
                                 // Already processed.
@@ -812,9 +835,12 @@ impl TyImplSelfOrTrait {
                                     Err(_) => continue,
                                 };
                                 // Same as in the first body type checking pass above, the
-                                // function body must be changed in-place, under the decl id
+                                // function body must be delivered in-place, under the decl id
                                 // already registered in the trait map.
-                                decl_engine.replace(*decl_ref.id(), new_ty_fn_decl);
+                                let reserved_id = reserved_fn_decl_ids
+                                    .get(decl_ref.id())
+                                    .expect("every function item has a reserved decl id");
+                                decl_engine.fill(reserved_id, new_ty_fn_decl);
                             }
                             (ImplItem::Constant(_const_decl), TyTraitItem::Constant(_decl_ref)) => {
                                 // Already processed.
@@ -832,10 +858,18 @@ impl TyImplSelfOrTrait {
                     }
 
                     // As the last step, let's perform type-check finalization.
-                    // Note that type-check finalization might produce new decl ids
-                    // because it uses `insert_modified`.
-                    // In that case, we are mutating existing `impl_trait.items` by
-                    // replacing existing `decl_ref`s with newly inserted ones.
+                    //
+                    // The finalized function items are filled in-place, under their
+                    // existing decl ids. This way, their ids captured across the
+                    // compiler, e.g., in the trait map or in the sibling calls, remain
+                    // valid and serve the finalized content.
+                    //
+                    // The finalization of constants, however, might produce new decl ids,
+                    // because it uses `insert_modified`. In that case, we are mutating
+                    // the existing `impl_trait.items` by replacing the existing
+                    // `decl_ref`s with the newly inserted ones, and must afterwards
+                    // re-fill the impl block decl with the final items list.
+                    let mut constant_decl_ids_changed = false;
                     let new_items = &mut impl_trait.items;
                     let mut finalizing_ctx =
                         TypeCheckFinalizationContext::new(ctx.engines, ctx.by_ref());
@@ -847,7 +881,10 @@ impl TyImplSelfOrTrait {
                                 let has_changes =
                                     fn_decl.type_check_finalize(handler, &mut finalizing_ctx)?;
                                 if has_changes.has_changes() {
-                                    *decl_ref = decl_engine.insert_modified(fn_decl, *decl_ref.id())
+                                    let reserved_id = reserved_fn_decl_ids
+                                        .get(decl_ref.id())
+                                        .expect("every function item has a reserved decl id");
+                                    decl_engine.fill(reserved_id, fn_decl);
                                 }
                             }
                             TyTraitItem::Constant(decl_ref) => {
@@ -857,21 +894,28 @@ impl TyImplSelfOrTrait {
                                     const_decl.type_check_finalize(handler, &mut finalizing_ctx)?;
                                 if has_changes.has_changes() {
                                     *decl_ref =
-                                        decl_engine.insert_modified(const_decl, *decl_ref.id())
+                                        decl_engine.insert_modified(const_decl, *decl_ref.id());
+                                    constant_decl_ids_changed = true;
                                 }
                             }
                             _ => {}
                         }
                     }
 
-                    // If the type check finalization above produced new decl ids for some of
-                    // the items, deliver the final items list to the already inserted
-                    // impl block decl. This **must be an in-place replacement**, under the same
-                    // impl block decl id (e.g., that id is stored in the `implementing_type`
-                    // of all the function items which are already in the trait map).
-                    if let TyDecl::ImplSelfOrTrait(impl_trait_id) = &impl_trait_decl {
-                        decl_engine.replace(impl_trait_id.decl_id, impl_trait);
+                    // If the type check finalization above produced new decl ids for some
+                    // of the constants, deliver the final items list to the impl block
+                    // decl, again in-place, under the same, already embedded decl id.
+                    if constant_decl_ids_changed {
+                        decl_engine.fill(&reserved_impl_trait, impl_trait);
                     }
+
+                    // The construction of the impl block decl and of all of its function
+                    // items is finished - freeze them all. From this point on, they are
+                    // guaranteed to be immutable.
+                    for (_, reserved_id) in reserved_fn_decl_ids {
+                        let _ = decl_engine.freeze(reserved_id);
+                    }
+                    let _ = decl_engine.freeze(reserved_impl_trait);
 
                     Ok(impl_trait_decl)
                 })
@@ -920,10 +964,18 @@ fn type_check_trait_implementation(
     trait_decl_span: &Span,
     block_span: &Span,
     is_contract: bool,
+    reserved_impl_trait_decl_id: &ReservedDeclId<ty::TyImplSelfOrTrait>,
 ) -> Result<(Vec<TyImplItem>, Vec<TyImplItem>), ErrorEmitted> {
     let type_engine = ctx.engines.te();
     let decl_engine = ctx.engines.de();
     let engines = ctx.engines();
+
+    // The impl trait decl that the items created below belong to. Its decl slot
+    // is reserved, which allows us to set it as the `implementing_type` of the
+    // items already at their creation.
+    let impl_trait_decl = TyDecl::ImplSelfOrTrait(ty::ImplSelfOrTrait {
+        decl_id: reserved_impl_trait_decl_id.id(),
+    });
 
     // Check to see if the type that we are implementing for implements the
     // supertraits of this trait.
@@ -1218,6 +1270,10 @@ fn type_check_trait_implementation(
                     !ctx.code_block_first_pass(),
                 ));
 
+                // The method is born with its `implementing_type` already set,
+                // pointing to the reserved impl trait decl.
+                impl_method.set_implementing_type(impl_trait_decl.clone());
+
                 // Remove this method from the checklist.
                 let name = impl_method.name.clone();
                 method_checklist.remove(&name);
@@ -1307,11 +1363,6 @@ fn type_check_trait_implementation(
             TyImplItem::Fn(decl_ref) => {
                 let mut method = (*decl_engine.get_function(decl_ref)).clone();
 
-                // If we have `impl_type_parameters`, the `method.type_parameters`
-                // will be changed below, otherwise not. I.e., if `impl_type_parameters`
-                // are not empty, we will have changes.
-                let mut has_changes = (!impl_type_parameters.is_empty()).into();
-
                 // We need to add impl type parameters to the method's type parameters
                 // so that in-line monomorphization can complete.
                 //
@@ -1331,25 +1382,31 @@ fn type_check_trait_implementation(
                         .collect::<Vec<_>>(),
                 );
 
-                if method.implementing_for != Some(implementing_for) {
-                    method.implementing_for = Some(implementing_for);
-                    has_changes = HasChanges::Yes;
-                }
+                method.implementing_for = Some(implementing_for);
 
-                has_changes |= method.replace_decls(&decl_mapping, handler, &mut ctx)?;
+                // The method is derived from the trait's provided method, whose
+                // `implementing_type` is the trait decl. Here, the derived method
+                // becomes an item of the impl trait decl. This means that the
+                // derived method always differs from the original provided method,
+                // and we always insert it as a new, modified decl. Note that this
+                // also guarantees that the trait's provided method decl itself
+                // stays unchanged.
+                method.set_implementing_type(impl_trait_decl.clone());
 
-                has_changes |= method.subst(&SubstTypesContext::new(
+                method.replace_decls(&decl_mapping, handler, &mut ctx)?;
+
+                method.subst(&SubstTypesContext::new(
                     handler,
                     engines,
                     &trait_type_mapping,
                     !ctx.code_block_first_pass(),
                 ));
 
-                let decl_ref = if has_changes.has_changes() {
-                    decl_engine.insert_modified(method, *decl_ref.id())
-                } else {
-                    decl_ref.clone()
-                };
+                // There is no need to track if the calls above have changed the
+                // method or not. Setting the `implementing_type` has surely
+                // changed it, so we always insert the derived method as a new,
+                // modified decl.
+                let decl_ref = decl_engine.insert_modified(method, *decl_ref.id());
 
                 all_items_refs.push(TyImplItem::Fn(decl_ref));
             }

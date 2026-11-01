@@ -939,6 +939,23 @@ pub fn parsed_to_ast(
         }
     })?;
 
+    // After a successfully finished type checking of a package, every reserved decl
+    // slot must be filled and frozen. An open slot at this point means that an
+    // unfinished declaration has leaked out of the type checking, and is a bug in
+    // the compiler. Note that in the case of a failed type checking (`handler.has_errors`),
+    // open slots are possible and valid.
+    if !handler.has_errors() && engines.de().has_open_decl_slots() {
+        let error = handler.emit_err(CompileError::Internal(
+            "Decl slots are left open after a successfully finished type checking.",
+            Span::dummy(),
+        ));
+        return Err(TypeCheckFailed {
+            root_module: Some(Arc::new(typed_program.root_module.clone())),
+            namespace: typed_program.namespace.current_package_ref().clone(),
+            error,
+        });
+    }
+
     // Only clear the parsed AST nodes if we are running a regular compilation pipeline.
     // LSP needs these to build its token map, and they are cleared by `clear_program` as
     // part of the LSP garbage collection functionality instead.

@@ -6,7 +6,7 @@ use sway_error::{
 use sway_types::{Ident, Named, Spanned};
 
 use crate::{
-    decl_engine::{DeclEngineGet, DeclEngineInsert, DeclRef, ReplaceFunctionImplementingType},
+    decl_engine::{DeclEngineGet, DeclEngineInsert, DeclEngineReserve, DeclRef},
     language::{
         parsed::{self, Declaration, StorageEntry},
         ty::{
@@ -176,13 +176,26 @@ impl TyDecl {
             }
             Declaration::TraitDeclaration(decl_id) => {
                 let trait_decl = &*engines.pe().get_trait(decl_id);
-                let mut trait_decl =
-                    match ty::TyTraitDecl::type_check(handler, ctx.by_ref(), trait_decl) {
-                        Ok(res) => res,
-                        Err(err) => {
-                            return Ok(ty::TyDecl::ErrorRecovery(trait_decl.span.clone(), err))
-                        }
-                    };
+
+                // Reserve the decl slot for the trait decl before type checking it.
+                // This way, the trait decl can be set as the `implementing_type` of
+                // the trait's provided methods already at their creation, although
+                // the trait decl itself can be created only after all of its items
+                // are known.
+                let reserved_trait_decl = decl_engine.reserve(engines, *decl_id);
+
+                let mut trait_decl = match ty::TyTraitDecl::type_check(
+                    handler,
+                    ctx.by_ref(),
+                    trait_decl,
+                    &reserved_trait_decl,
+                ) {
+                    Ok(res) => res,
+                    Err(err) => {
+                        decl_engine.abandon(reserved_trait_decl);
+                        return Ok(ty::TyDecl::ErrorRecovery(trait_decl.span.clone(), err));
+                    }
+                };
                 let name = trait_decl.name.clone();
 
                 // save decl_refs for the LSP
@@ -204,19 +217,20 @@ impl TyDecl {
                             });
                 }
 
-                let decl: ty::TyDecl = decl_engine.insert(trait_decl.clone(), *decl_id).into();
-
-                trait_decl
-                    .items
-                    .iter_mut()
-                    .for_each(|item| item.replace_implementing_type(engines, decl.clone()));
+                // The construction of the trait decl is finished. We need to fill its reserved
+                // decl slot and freeze it. From this point on, the slot is guaranteed to be
+                // immutable. Note that the `implementing_type` of the trait's provided
+                // methods is already set, at their creation during the type checking.
+                decl_engine.fill(&reserved_trait_decl, trait_decl);
+                let decl: ty::TyDecl = decl_engine.freeze(reserved_trait_decl).into();
 
                 ctx.insert_symbol(handler, name, decl.clone())?;
                 decl
             }
             Declaration::ImplSelfOrTrait(decl_id) => {
                 let impl_self_or_trait = &*engines.pe().get_impl_self_or_trait(decl_id);
-                let mut impl_trait = if impl_self_or_trait.is_self {
+
+                if impl_self_or_trait.is_self {
                     let impl_trait_decl = match ty::TyImplSelfOrTrait::type_check_impl_self(
                         handler,
                         ctx.by_ref(),
@@ -256,19 +270,27 @@ impl TyDecl {
                     )?;
 
                     return Ok(impl_trait_decl);
-                } else {
-                    match ty::TyImplSelfOrTrait::type_check_impl_trait(
-                        handler,
-                        ctx.by_ref(),
-                        impl_self_or_trait,
-                    ) {
-                        Ok(res) => res,
-                        Err(err) => {
-                            return Ok(ty::TyDecl::ErrorRecovery(
-                                impl_self_or_trait.block_span.clone(),
-                                err,
-                            ))
-                        }
+                }
+
+                // Reserve the decl slot for the impl trait decl before type checking it.
+                // This way, the impl trait decl can be set as the `implementing_type` of
+                // its items already at their creation, although the impl trait decl
+                // itself can be created only after all of its items are known.
+                let reserved_impl_trait_decl_id = decl_engine.reserve(engines, *decl_id);
+
+                let impl_trait = match ty::TyImplSelfOrTrait::type_check_impl_trait(
+                    handler,
+                    ctx.by_ref(),
+                    impl_self_or_trait,
+                    &reserved_impl_trait_decl_id,
+                ) {
+                    Ok(res) => res,
+                    Err(err) => {
+                        decl_engine.abandon(reserved_impl_trait_decl_id);
+                        return Ok(ty::TyDecl::ErrorRecovery(
+                            impl_self_or_trait.block_span.clone(),
+                            err,
+                        ));
                     }
                 };
 
@@ -312,6 +334,13 @@ impl TyDecl {
                     &empty_vec
                 };
 
+                // The construction of the impl trait decl is finished - fill its
+                // reserved decl slot. Note that the fill must happen before inserting
+                // the trait implementation into the trait map below, because the
+                // conflict checks there can reach the impl trait decl through the
+                // `implementing_type` of its items.
+                decl_engine.fill(&reserved_impl_trait_decl_id, impl_trait.clone());
+
                 ctx.insert_trait_implementation(
                     handler,
                     impl_trait.trait_name.clone(),
@@ -328,11 +357,12 @@ impl TyDecl {
                     IsExtendingExistingImpl::No,
                     IsImplInterfaceSurface::No,
                 )?;
+
+                // Freeze the impl trait decl. From this point on, it is guaranteed to
+                // be immutable. Note that the `implementing_type` of the items is
+                // already set, at their creation during the type checking.
                 let impl_trait_decl: ty::TyDecl =
-                    decl_engine.insert(impl_trait.clone(), *decl_id).into();
-                impl_trait.items.iter_mut().for_each(|item| {
-                    item.replace_implementing_type(engines, impl_trait_decl.clone());
-                });
+                    decl_engine.freeze(reserved_impl_trait_decl_id).into();
                 impl_trait_decl
             }
             Declaration::StructDeclaration(decl_id) => {
@@ -351,10 +381,23 @@ impl TyDecl {
             }
             Declaration::AbiDeclaration(decl_id) => {
                 let abi_decl = &*engines.pe().get_abi(decl_id);
-                let mut abi_decl = match ty::TyAbiDecl::type_check(handler, ctx.by_ref(), abi_decl)
-                {
+
+                // Reserve the decl slot for the ABI decl before type checking it.
+                // This way, the ABI decl can be set as the `implementing_type` of
+                // the ABI's provided methods already at their creation, although
+                // the ABI decl itself can be created only after all of its items
+                // are known.
+                let reserved_abi_decl_id = decl_engine.reserve(engines, *decl_id);
+
+                let mut abi_decl = match ty::TyAbiDecl::type_check(
+                    handler,
+                    ctx.by_ref(),
+                    abi_decl,
+                    &reserved_abi_decl_id,
+                ) {
                     Ok(res) => res,
                     Err(err) => {
+                        decl_engine.abandon(reserved_abi_decl_id);
                         return Ok(ty::TyDecl::ErrorRecovery(abi_decl.span.clone(), err));
                     }
                 };
@@ -379,11 +422,13 @@ impl TyDecl {
                             });
                 }
 
-                let decl: ty::TyDecl = decl_engine.insert(abi_decl.clone(), *decl_id).into();
-                abi_decl
-                    .items
-                    .iter_mut()
-                    .for_each(|item| item.replace_implementing_type(engines, decl.clone()));
+                // The construction of the ABI decl is finished - fill its reserved
+                // decl slot and freeze it. From this point on, it is guaranteed to be
+                // immutable. Note that the `implementing_type` of the ABI's provided
+                // methods is already set, at their creation during the type checking.
+                decl_engine.fill(&reserved_abi_decl_id, abi_decl);
+                let decl: ty::TyDecl = decl_engine.freeze(reserved_abi_decl_id).into();
+
                 ctx.insert_symbol(handler, name, decl.clone())?;
                 decl
             }
