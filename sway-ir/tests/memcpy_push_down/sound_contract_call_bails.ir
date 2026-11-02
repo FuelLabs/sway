@@ -1,5 +1,25 @@
 // SOUNDNESS: `contract_call` params involving `dst` are opaque — bail.
 //
+//
+// ```sway
+// script;
+//
+// // Conceptual: copy calldata params, then `contract_call` with that buffer
+// // as an opaque operand (bail), then optionally mutate / read a field.
+// fn main(flag: bool, params: Params, asset: b256) -> u64 {
+//     let mut params_copy = params;
+//     let _ = /* contract_call using params_copy */;
+//     if flag {
+//         params_copy.field = 42;
+//         params_copy.field
+//     } else {
+//         params_copy.field
+//     }
+// }
+// ```
+//
+// IR uses a real `contract_call` on the copied params aggregate; Sway surface varies by ABI helper.
+//
 // Expected: entry `mem_copy_val` stays put.
 script {
     entry fn main(flag: bool, params_src: __ptr { b256, u64, u64 }, asset: __ptr b256) -> u64 {

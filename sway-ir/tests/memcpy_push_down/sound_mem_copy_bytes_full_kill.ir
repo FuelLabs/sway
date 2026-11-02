@@ -1,6 +1,31 @@
 // CORRECTNESS: `mem_copy_bytes` with `byte_len` covering the whole symbol is
 // a FullWrite kill (same as `mem_copy_val` overwrite).
 //
+//
+// ```sway
+// script;
+//
+// struct Pair {
+//     a: u64,
+//     b: u64,
+// }
+//
+// #[inline(never)]
+// fn consume_read_only(order: Pair) -> u64 {
+//     order.a
+// }
+//
+// fn main(flag: bool, order: Pair, other: Pair) -> u64 {
+//     let mut order_copy = order;
+//     if flag {
+//         order_copy = other; // IR: full mem_copy_bytes (16) kill
+//         consume_read_only(order_copy)
+//     } else {
+//         consume_read_only(order_copy)
+//     }
+// }
+// ```
+//
 // Expected:
 //   A = entry copy disappears,
 //   B = full `mem_copy_bytes` from `other` stays (no mat from `order`),

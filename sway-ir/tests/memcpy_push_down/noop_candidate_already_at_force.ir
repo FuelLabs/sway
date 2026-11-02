@@ -2,6 +2,32 @@
 // (`MayWrite` call) with no delegated reads — profitability declines the
 // rewrite (`keep_candidate` alone is not profitable).
 //
+//
+// ```sway
+// script;
+//
+// struct Pair {
+//     a: u64,
+//     b: u64,
+// }
+//
+// #[inline(never)]
+// fn poke_mut(ref mut order: Pair) {
+//     order.a = 1;
+// }
+//
+// #[inline(never)]
+// fn consume_read_only(order: Pair) -> u64 {
+//     order.a
+// }
+//
+// fn main(order: Pair) -> u64 {
+//     let mut order_copy = order;
+//     poke_mut(order_copy); // MayWrite force site immediately after the copy
+//     consume_read_only(order_copy)
+// }
+// ```
+//
 // Expected: `mem_copy_val` stays put (Modified: false).
 script {
     entry fn main(order: __ptr { u64, u64 }) -> u64 {

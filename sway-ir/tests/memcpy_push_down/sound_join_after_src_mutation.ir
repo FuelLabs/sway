@@ -1,7 +1,8 @@
 // SOUNDNESS (classic hole): one path mutates `src` (forcing materialization),
-// the other stays pending; they join and then read `dst`. The pending edge
-// into the join MUST materialize — otherwise the shared read would be
-// delegated to `src` and observe the mutation from the other path.
+// the other stays pending; they join and then read `dst`. Sunk analysis would
+// force both the src-mutation site and the pending join edge; obligation
+// hoisting keeps the entry copy (taken before any src mutation), so the join
+// always sees the original `order` snapshot.
 //
 // ```sway
 // fn main(flag: bool, order: Order) -> u64 {
@@ -14,9 +15,8 @@
 // ```
 //
 // Expected (fall-through edge already split):
-//   A = entry copy disappears,
-//   B = a copy materializes in `block_mutate_src` before the store to `order`,
-//   C = a copy materializes on the fall-through edge into the join,
+//   A = entry copy stays (Modified: false; coalesced over B/C sunk sites),
+//   B/C = no per-arm copies,
 //   D = join calls `consume_read_only` on `order_copy` (never on `order`).
 script {
     entry fn main(flag: bool, order: __ptr { u64, u64 }) -> u64 {

@@ -1,5 +1,34 @@
 // SOUNDNESS: `asm` MayWrite on `dst` before the candidate — bail.
 //
+//
+// ```sway
+// script;
+//
+// struct Pair {
+//     a: u64,
+//     b: u64,
+// }
+//
+// #[inline(never)]
+// fn consume_read_only(order: Pair) -> u64 {
+//     order.a
+// }
+//
+// fn main(flag: bool, order: Pair) -> u64 {
+//     let mut order_copy = Pair { a: 0, b: 0 };
+//     // IR: asm MayWrite on `order_copy` *before* the rebinding copy.
+//     let _ = asm(r1: order_copy) {
+//         movi r1 i1;
+//         r1: u64
+//     };
+//     order_copy = order;
+//     if flag {
+//         order_copy.b = 42;
+//     }
+//     consume_read_only(order_copy)
+// }
+// ```
+//
 // Expected: the rebinding `mem_copy_val` stays put.
 script {
     entry fn main(flag: bool, order: __ptr { u64, u64 }) -> u64 {

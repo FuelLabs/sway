@@ -1,5 +1,29 @@
 // FILTER: source must be a local or *entry* block argument, not a mid-CFG arg.
 //
+//
+// ```sway
+// script;
+//
+// struct Pair {
+//     a: u64,
+//     b: u64,
+// }
+//
+// #[inline(never)]
+// fn consume_read_only(order: Pair) -> u64 {
+//     order.a
+// }
+//
+// fn main(flag: bool, order: Pair) -> u64 {
+//     // IR: both cbr arms pass `order` into a join block arg `src`, then
+//     // `mem_copy_val` uses that mid-CFG arg (not an entry arg / local).
+//     let src = if flag { order } else { order };
+//     let mut order_copy = src;
+//     order_copy.b = 42;
+//     consume_read_only(order_copy)
+// }
+// ```
+//
 // Expected: Modified: false.
 script {
     entry fn main(flag: bool, order: __ptr { u64, u64 }) -> u64 {

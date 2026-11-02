@@ -1,6 +1,35 @@
 // SOUNDNESS: branching with a `dst` pointer as a block argument is an
 // unclassified ptr operand (and would defeat `analyze_ptr_chain`); bail.
 //
+//
+// ```sway
+// script;
+//
+// struct Pair {
+//     a: u64,
+//     b: u64,
+// }
+//
+// #[inline(never)]
+// fn consume_read_only(order: Pair) -> u64 {
+//     order.a
+// }
+//
+// fn main(flag: bool, order: Pair) -> u64 {
+//     let mut order_copy = order;
+//     // IR: `order_copy` is passed as a block argument on both cbr edges
+//     // (pointer identity as CFG value → bail).
+//     if flag {
+//         order_copy.b = 42;
+//         consume_read_only(order_copy)
+//     } else {
+//         consume_read_only(order_copy)
+//     }
+// }
+// ```
+//
+// The bail is specifically from threading the destination pointer as a block argument in IR; surface Sway may look like a normal diamond.
+//
 // Expected: entry `mem_copy_val` stays put.
 script {
     entry fn main(flag: bool, order: __ptr { u64, u64 }) -> u64 {

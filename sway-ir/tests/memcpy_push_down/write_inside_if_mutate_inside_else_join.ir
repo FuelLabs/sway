@@ -26,12 +26,11 @@
 // Same shape as `write_inside_if_read_inside_else_join`, but the callee writes
 // through its argument (`ref mut` in Sway). A mutating callee must be viewed
 // as a write: it can never receive the source buffer, only the private copy.
+// Both arms therefore obligate a private buffer; hoisting keeps the entry copy.
 //
 // Expected from memcpy-push-down:
-//   A = the entry `mem_copy_val` disappears,
-//   B = a copy materializes in `block_write`, just before the store,
-//   C = a copy ALSO materializes in `block_read`, just before the call
-//       (no delegation: `consume_mutating` may write),
+//   A = the entry `mem_copy_val` stays (Modified: false),
+//   B/C = no per-arm copies (both arms already have a private buffer from A),
 //   D = nothing is copied at the (dead) join.
 script {
     entry fn main(flag: bool, order: __ptr { u64, u64 }) -> u64 {

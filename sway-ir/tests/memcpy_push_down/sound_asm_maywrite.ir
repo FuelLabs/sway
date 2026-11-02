@@ -2,6 +2,34 @@
 // as `MayWrite` and must force materialization before the asm (never
 // delegate through it).
 //
+//
+// ```sway
+// script;
+//
+// struct Pair {
+//     a: u64,
+//     b: u64,
+// }
+//
+// #[inline(never)]
+// fn consume_read_only(order: Pair) -> u64 {
+//     order.a
+// }
+//
+// fn main(flag: bool, order: Pair) -> u64 {
+//     let mut order_copy = order;
+//     if flag {
+//         // IR: asm takes `&mut order_copy` → MayWrite force site.
+//         asm(r1: order_copy) {
+//             movi r1 i7;
+//             r1: u64
+//         }
+//     } else {
+//         consume_read_only(order_copy)
+//     }
+// }
+// ```
+//
 // Expected:
 //   A = entry copy disappears,
 //   B = a copy materializes in `block_asm` just before the asm,

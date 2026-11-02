@@ -2,6 +2,23 @@
 // candidate. (A true type-mismatched `mem_copy_val` is rejected by IR verify
 // before the pass runs, so this covers the same `find_candidates` continue.)
 //
+//
+// ```sway
+// script;
+//
+// struct Pair {
+//     a: u64,
+//     b: u64,
+// }
+//
+// fn main(order: Pair) -> u64 {
+//     // Conceptual: copy only field `a` (IR: mem_copy_val into a u64 local
+//     // from a GEP of `order`). Not a whole-local / entry-arg candidate.
+//     let mut field_copy = order.a;
+//     field_copy
+// }
+// ```
+//
 // Expected: Modified: false.
 script {
     entry fn main(order: __ptr { u64, u64 }) -> u64 {

@@ -1,5 +1,32 @@
 // CORRECTNESS: two independent copies are both push-downed across restarts.
 //
+//
+// ```sway
+// script;
+//
+// struct Pair {
+//     a: u64,
+//     b: u64,
+// }
+//
+// #[inline(never)]
+// fn consume_read_only(order: Pair) -> u64 {
+//     order.a
+// }
+//
+// fn main(flag: bool, a: Pair, b: Pair) -> u64 {
+//     let mut a_copy = a;
+//     let mut b_copy = b;
+//     if flag {
+//         a_copy.b = 1;
+//         b_copy.b = 2;
+//         consume_read_only(a_copy) + consume_read_only(b_copy)
+//     } else {
+//         consume_read_only(a_copy) + consume_read_only(b_copy)
+//     }
+// }
+// ```
+//
 // Expected: both entry copies disappear; each write arm materializes its own
 // copy; each read arm delegates to its source.
 script {

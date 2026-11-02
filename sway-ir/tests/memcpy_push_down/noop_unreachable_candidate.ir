@@ -1,5 +1,28 @@
 // FILTER: candidate in an unreachable block is ignored.
 //
+//
+// ```sway
+// script;
+//
+// struct Pair {
+//     a: u64,
+//     b: u64,
+// }
+//
+// #[inline(never)]
+// fn consume_read_only(order: Pair) -> u64 {
+//     order.a
+// }
+//
+// fn main(order: Pair) -> u64 {
+//     return 0;
+//     // Unreachable: candidate copy lives only on a dead path (IR `dead` block).
+//     let mut order_copy = order;
+//     order_copy.b = 42;
+//     consume_read_only(order_copy)
+// }
+// ```
+//
 // Expected: Modified: false (reachable IR unchanged; dead copy may remain).
 script {
     entry fn main(order: __ptr { u64, u64 }) -> u64 {

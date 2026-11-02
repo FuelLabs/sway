@@ -1,5 +1,31 @@
 // FILTER: self-copy (`dst == src` symbol) is not a candidate.
 //
+//
+// ```sway
+// script;
+//
+// struct Pair {
+//     a: u64,
+//     b: u64,
+// }
+//
+// #[inline(never)]
+// fn consume_read_only(order: Pair) -> u64 {
+//     order.a
+// }
+//
+// fn main(flag: bool) -> u64 {
+//     let mut order_copy = Pair { a: 0, b: 0 };
+//     order_copy = order_copy; // self-copy (IR: mem_copy_val same symbol)
+//     if flag {
+//         order_copy.b = 42;
+//         consume_read_only(order_copy)
+//     } else {
+//         consume_read_only(order_copy)
+//     }
+// }
+// ```
+//
 // Expected: Modified: false.
 script {
     entry fn main(flag: bool) -> u64 {

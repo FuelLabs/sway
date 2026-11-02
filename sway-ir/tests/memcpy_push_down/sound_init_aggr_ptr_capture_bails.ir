@@ -1,5 +1,37 @@
 // SOUNDNESS: using `dst` as an `init_aggr` initializer captures the pointer.
 //
+//
+// ```sway
+// script;
+//
+// struct Pair {
+//     a: u64,
+//     b: u64,
+// }
+//
+// struct Holder {
+//     p: &mut Pair,
+// }
+//
+// #[inline(never)]
+// fn consume_read_only(order: Pair) -> u64 {
+//     order.a
+// }
+//
+// fn main(flag: bool, order: Pair) -> u64 {
+//     let mut order_copy = order;
+//     // IR: `init_aggr` captures `&mut order_copy` into `holder`.
+//     let holder = Holder { p: &mut order_copy };
+//     let _ = holder;
+//     if flag {
+//         order_copy.b = 42;
+//         consume_read_only(order_copy)
+//     } else {
+//         consume_read_only(order_copy)
+//     }
+// }
+// ```
+//
 // Expected: entry `mem_copy_val` stays put.
 script {
     entry fn main(flag: bool, order: __ptr { u64, u64 }) -> u64 {

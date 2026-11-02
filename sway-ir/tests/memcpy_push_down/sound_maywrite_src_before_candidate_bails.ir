@@ -1,5 +1,34 @@
 // SOUNDNESS: MayWrite on *src* before the candidate copy — bail (alias window).
 //
+//
+// ```sway
+// script;
+//
+// struct Pair {
+//     a: u64,
+//     b: u64,
+// }
+//
+// #[inline(never)]
+// fn poke_mut(ref mut order: Pair) {
+//     order.a = 1;
+// }
+//
+// #[inline(never)]
+// fn consume_read_only(order: Pair) -> u64 {
+//     order.a
+// }
+//
+// fn main(flag: bool, order: Pair) -> u64 {
+//     poke_mut(order); // MayWrite on src before the copy
+//     let mut order_copy = order;
+//     if flag {
+//         order_copy.b = 42;
+//     }
+//     consume_read_only(order_copy)
+// }
+// ```
+//
 // Expected: the rebinding `mem_copy_val` stays put.
 script {
     entry fn main(flag: bool, order: __ptr { u64, u64 }) -> u64 {

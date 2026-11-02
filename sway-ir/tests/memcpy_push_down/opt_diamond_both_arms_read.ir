@@ -1,6 +1,30 @@
 // CORRECTNESS: both arms only read while pending — delete the copy and
 // delegate both reads; no materialization at the (dead) join.
 //
+//
+// ```sway
+// script;
+//
+// struct Pair {
+//     a: u64,
+//     b: u64,
+// }
+//
+// #[inline(never)]
+// fn consume_read_only(order: Pair) -> u64 {
+//     order.a
+// }
+//
+// fn main(flag: bool, order: Pair) -> u64 {
+//     let mut order_copy = order;
+//     if flag {
+//         consume_read_only(order_copy)
+//     } else {
+//         consume_read_only(order_copy)
+//     }
+// }
+// ```
+//
 // Expected:
 //   A = entry copy disappears,
 //   B/C = both arms call consume on `order`,

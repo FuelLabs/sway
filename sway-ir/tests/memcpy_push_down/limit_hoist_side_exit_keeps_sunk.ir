@@ -1,0 +1,70 @@
+// LIMIT: full-set hoist to ncd(O) is not anticipated when a side exit from
+// that dominator never hits an obligation.
+//
+// ```sway
+// fn main(take_write: bool, take_join: bool, order: Order) -> u64 {
+//     let mut order_copy = order;
+//     if take_write {
+//         order_copy.prev = 42;
+//     } else if take_join {
+//         // fall through to the shared consume
+//     } else {
+//         return 0; // side exit: never needs a private copy
+//     }
+//     consume_read_only(order_copy)
+// }
+// ```
+//
+// CFG: `ncd(O) = entry`, but `entry → rest → early_exit` never visits O.
+// Current algo: refuse hoist; keep sunk materializations on the two obligated
+// arms only. The side exit stays copy-free.
+//
+// Cluster retry cannot help here: each obligated arm is already a singleton
+// subset. Contrast `opt_hoist_two_clusters_side_exit`, where subsets merge.
+//
+// Expected from memcpy-push-down:
+//   A = the entry `mem_copy_val` disappears,
+//   B = a copy materializes in `block_write` before the store,
+//   C = a copy materializes on `block_fallthrough` before its `br`,
+//   D = `block_early_exit` has no copy.
+script {
+    entry fn main(take_write: bool, take_join: bool, order: __ptr { u64, u64 }) -> u64 {
+        local mut { u64, u64 } order_copy
+
+        entry(take_write: bool, take_join: bool, order: __ptr { u64, u64 }):
+        v0 = get_local __ptr { u64, u64 }, order_copy
+        mem_copy_val v0, order // <------------------ A
+        cbr take_write, block_write(), block_rest()
+
+        block_write():
+        v1 = get_local __ptr { u64, u64 }, order_copy
+        v2 = const u64 1
+        v3 = get_elem_ptr v1, __ptr u64, v2
+        v4 = const u64 42
+        store v4 to v3 // <------------------ B
+        br block_join()
+
+        block_rest():
+        cbr take_join, block_fallthrough(), block_early_exit()
+
+        block_fallthrough(): // <------------------ C
+        br block_join()
+
+        block_early_exit(): // <------------------ D
+        v5 = const u64 0
+        ret u64 v5
+
+        block_join():
+        v6 = get_local __ptr { u64, u64 }, order_copy
+        v7 = call consume_read_only(v6)
+        ret u64 v7
+    }
+
+    fn consume_read_only(order: __ptr { u64, u64 }) -> u64 {
+        entry(order: __ptr { u64, u64 }):
+        v0 = const u64 0
+        v1 = get_elem_ptr order, __ptr u64, v0
+        v2 = load v1
+        ret u64 v2
+    }
+}

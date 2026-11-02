@@ -1,6 +1,32 @@
 // CORRECTNESS: `mem_copy_bytes` with `byte_len` < symbol size is PartialWrite
 // and must materialize the pending copy beforehand.
 //
+//
+// ```sway
+// script;
+//
+// struct Pair {
+//     a: u64,
+//     b: u64,
+// }
+//
+// #[inline(never)]
+// fn consume_read_only(order: Pair) -> u64 {
+//     order.a
+// }
+//
+// fn main(flag: bool, order: Pair, other: Pair) -> u64 {
+//     let mut order_copy = order;
+//     if flag {
+//         // IR: mem_copy_bytes of 8 into a 16-byte Pair (partial write → force).
+//         order_copy.a = other.a;
+//         consume_read_only(order_copy)
+//     } else {
+//         consume_read_only(order_copy)
+//     }
+// }
+// ```
+//
 // Expected:
 //   A = entry copy disappears,
 //   B = a copy materializes just before the partial `mem_copy_bytes`,

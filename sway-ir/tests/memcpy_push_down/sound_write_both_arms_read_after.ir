@@ -1,5 +1,6 @@
-// CORRECTNESS: both arms write (materialize independently), then a shared
-// read after the join uses the private buffer. No pending edge into the join.
+// CORRECTNESS: both arms write, then a shared read after the join. Sunk
+// analysis would materialize independently on each arm; obligation hoisting
+// keeps the single entry copy (every path from entry hits an obligation).
 //
 // ```sway
 // fn main(flag: bool, order: Order) -> u64 {
@@ -14,9 +15,9 @@
 // ```
 //
 // Expected:
-//   A = entry copy disappears,
-//   B/C = a copy materializes in each arm before its store,
-//   D = join calls `consume_read_only` on `order_copy` (already private).
+//   A = entry copy stays (Modified: false),
+//   B/C = no per-arm copies,
+//   D = join uses the entry-copied `order_copy`.
 script {
     entry fn main(flag: bool, order: __ptr { u64, u64 }) -> u64 {
         local mut { u64, u64 } order_copy

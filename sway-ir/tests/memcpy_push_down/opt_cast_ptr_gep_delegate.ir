@@ -1,5 +1,26 @@
 // CORRECTNESS: a read via `cast_ptr` then GEP must rebuild the chain on `src`.
 //
+//
+// ```sway
+// script;
+//
+// struct Pair {
+//     a: u64,
+//     b: u64,
+// }
+//
+// fn main(flag: bool, w: Pair) -> u64 {
+//     let mut copy = w;
+//     if flag {
+//         copy.b = 42;
+//         return copy.a;
+//     }
+//     copy.a
+// }
+// ```
+//
+// The IR elaborates each `copy.a` load as cast_ptr → u8* → cast back → GEP/load so the pass must rebuild that chain on `w`.
+//
 // Expected:
 //   A = entry copy disappears,
 //   B = copy materializes before the store,

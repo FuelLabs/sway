@@ -21,13 +21,12 @@
 // ```
 //
 // An `if` with no `else`: conditional write, then a shared read after the
-// join. The pending edge into the join must materialize.
+// join. Sunk analysis would materialize on both arms; obligation hoisting
+// keeps the single entry copy because every path from entry hits an obligation.
 //
 // Expected from memcpy-push-down:
-//   A = the entry `mem_copy_val` disappears,
-//   B = a copy materializes in `block_write`, just before the store,
-//   C = a copy materializes on the fall-through edge (`block_fallthrough`),
-//       so the shared `consume_read_only` always receives `order_copy`.
+//   A = the entry `mem_copy_val` stays (coalesced placement; Modified: false),
+//   B/C = no per-arm copies.
 script {
     entry fn main(flag: bool, order: __ptr { u64, u64 }) -> u64 {
         local mut { u64, u64 } order_copy
@@ -45,7 +44,7 @@ script {
         store v4 to v3 // <------------------ B
         br block_join()
 
-        block_fallthrough(): // <------------------ C (pending edge materializes before this br)
+        block_fallthrough(): // <------------------ C
         br block_join()
 
         block_join():

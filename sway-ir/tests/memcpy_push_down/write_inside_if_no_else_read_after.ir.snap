@@ -1,7 +1,7 @@
 ---
 source: sway-ir/tests/tests.rs
 ---
-Modified: true
+Modified: false
 
 script {
     entry fn main(flag: bool, order: __ptr { u64, u64 }) -> u64 {
@@ -9,22 +9,18 @@ script {
 
         entry(mut flag: bool, order: __ptr { u64, u64 }):
         v3v1 = get_local __ptr { u64, u64 }, order_copy
--         mem_copy_val v3v1, order
+        mem_copy_val v3v1, order
         cbr flag, block_write(), block_fallthrough()
 
         block_write():
         v6v1 = get_local __ptr { u64, u64 }, order_copy
         v7v1 = const u64 1
         v8v1 = get_elem_ptr v6v1, __ptr u64, v7v1
-+         v21v1 = get_local __ptr { u64, u64 }, order_copy
-+         mem_copy_val v21v1, order
         v9v1 = const u64 42
         store v9v1 to v8v1
         br block_join()
 
         block_fallthrough():
-+         v23v1 = get_local __ptr { u64, u64 }, order_copy
-+         mem_copy_val v23v1, order
         br block_join()
 
         block_join():
