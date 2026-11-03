@@ -629,11 +629,11 @@ fn nearest_common_dominator(
     let mut best = entry;
     let mut found = false;
     for &cand in all_blocks {
-        if blocks.iter().all(|&b| dom_tree.dominates(cand, b)) {
-            if !found || dom_tree.dominates(best, cand) {
-                best = cand;
-                found = true;
-            }
+        if blocks.iter().all(|&b| dom_tree.dominates(cand, b))
+            && (!found || dom_tree.dominates(best, cand))
+        {
+            best = cand;
+            found = true;
         }
     }
     found.then_some(best)
@@ -667,16 +667,9 @@ fn every_path_needs_copy(
         let ans = if succs.is_empty() {
             hit
         } else {
-            succs.iter().all(|s| {
-                check(
-                    context,
-                    s.block,
-                    hit,
-                    candidate_site_blocks,
-                    memo,
-                    visiting,
-                )
-            })
+            succs
+                .iter()
+                .all(|s| check(context, s.block, hit, candidate_site_blocks, memo, visiting))
         };
         visiting.remove(&key);
         memo.insert(key, ans);
@@ -713,13 +706,13 @@ fn coalesce_placement(context: &Context, d: Block, sites: &[CandidateSite]) -> V
             best = Some((pos, v));
         }
     }
-    best.map(|(_, v)| v).unwrap_or_else(|| {
-        *insts.last().expect("block must have a terminator")
-    })
+    best.map(|(_, v)| v)
+        .unwrap_or_else(|| *insts.last().expect("block must have a terminator"))
 }
 
 /// Recompute delegated-read rewrites assuming materialization at each point in
 /// `placements` (Pending until one of those instructions, Materialized after).
+#[allow(clippy::too_many_arguments)]
 fn rescan_rewrites_with_placements(
     context: &Context,
     candidate: &Candidate,
@@ -916,12 +909,7 @@ fn coalesce_candidate_site_subset(
             })
             .collect();
         out.extend(coalesce_candidate_site_subset(
-            context,
-            candidate,
-            &sub,
-            dom_tree,
-            all_blocks,
-            entry,
+            context, candidate, &sub, dom_tree, all_blocks, entry,
         ));
     }
     out
@@ -960,23 +948,14 @@ fn try_coalesce_candidate_sites(
         .block_iter(context)
         .filter(|b| reachable.contains(b))
         .collect();
-    let clusters = coalesce_candidate_site_subset(
-        context,
-        candidate,
-        &sites,
-        dom_tree,
-        &all_blocks,
-        entry,
-    );
+    let clusters =
+        coalesce_candidate_site_subset(context, candidate, &sites, dom_tree, &all_blocks, entry);
     if clusters.is_empty() {
         return None;
     }
 
     // Entire set collapses to the candidate site: leave IR unchanged.
-    if clusters.len() == 1
-        && clusters[0].keep_candidate
-        && clusters[0].sites.len() == sites.len()
-    {
+    if clusters.len() == 1 && clusters[0].keep_candidate && clusters[0].sites.len() == sites.len() {
         return Some(Coalesce::RetainCandidate);
     }
 
@@ -1328,7 +1307,10 @@ fn push_down_candidate(
         inserts: Vec::new(),
         edge_inserts,
         delegated_reads: 0,
-        off_block_materializations: must_materialize_before_exit.iter().filter(|b| **b != candidate.block).count(),
+        off_block_materializations: must_materialize_before_exit
+            .iter()
+            .filter(|b| **b != candidate.block)
+            .count(),
         keep_candidate,
     };
     for block in &rpo {
@@ -1345,23 +1327,18 @@ fn push_down_candidate(
     // Coalesce multiple sunk CandidateSites to their nearest common dominator
     // when every_path_needs_copy (see module docs).
     let dom_tree = compute_dom_tree_from_po(context, function, &post_order);
-    match try_coalesce_candidate_sites(
-        context,
-        function,
-        candidate,
-        &plan,
-        &dom_tree,
-        &reachable,
-    ) {
+    match try_coalesce_candidate_sites(context, function, candidate, &plan, &dom_tree, &reachable) {
         Some(Coalesce::RetainCandidate) => {
             // One copy at the candidate is better than several sunk sites.
             return Ok(false);
         }
         Some(Coalesce::Places { absorbed, before }) => {
-            plan.inserts
-                .retain(|inst| !candidate_site_absorbed(CandidateSite::BeforeInst(*inst), &absorbed));
-            plan.edge_inserts
-                .retain(|block| !candidate_site_absorbed(CandidateSite::BeforeTerminator(*block), &absorbed));
+            plan.inserts.retain(|inst| {
+                !candidate_site_absorbed(CandidateSite::BeforeInst(*inst), &absorbed)
+            });
+            plan.edge_inserts.retain(|block| {
+                !candidate_site_absorbed(CandidateSite::BeforeTerminator(*block), &absorbed)
+            });
             plan.inserts.extend(before.iter().copied());
             plan.rewrites.clear();
             plan.delegated_reads = 0;
@@ -1407,9 +1384,10 @@ fn push_down_candidate(
     // off the multi_succ block itself (bail).
     for pred in &plan.edge_inserts {
         if pred.successors(context).len() > 1 {
-            let fanout_ok = pred.successors(context).iter().all(|succ| {
-                every_path_needs_copy(context, succ.block, &uses_dst)
-            });
+            let fanout_ok = pred
+                .successors(context)
+                .iter()
+                .all(|succ| every_path_needs_copy(context, succ.block, &uses_dst));
             if !fanout_ok {
                 return Ok(false);
             }
@@ -1435,9 +1413,7 @@ fn push_down_candidate(
             .map(|inst| inst.get_instruction(context).unwrap().parent)
             .chain(plan.edge_inserts.iter().copied())
             .collect();
-        if site_blocks.len() > 1
-            && every_path_needs_copy(context, candidate.block, &site_blocks)
-        {
+        if site_blocks.len() > 1 && every_path_needs_copy(context, candidate.block, &site_blocks) {
             return Ok(false);
         }
     }
