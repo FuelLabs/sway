@@ -1,5 +1,7 @@
 script;
 
+mod const_arguments;
+
 struct C {}
 
 trait A {
@@ -136,19 +138,78 @@ fn call_all_on_struct_with_assoc_fns_and_methods_with_const_generics() {
     assert(StructWithAssocFnsAndMethodsWithConstGenerics::fn_ret_m::<1, 2>() == 2);
 }
 
-// TODO: Enable this test once https://github.com/FuelLabs/sway/issues/7660 is fixed.
-// #[inline(never)]
-// fn call_all_on_struct_with_assoc_fns_and_methods_with_const_generics_wrapped<const A: u64, const B: u64>() {
-//     let s = StructWithAssocFnsAndMethodsWithConstGenerics {};
-//     assert(s.method_ret_n::<A, B>() == A);
-//     assert(s.method_ret_m::<A, B>() == B);
-//     assert(s.method_ret_n::<B, A>() == B);
-//     assert(s.method_ret_m::<B, A>() == A);
-//     assert(StructWithAssocFnsAndMethodsWithConstGenerics::fn_ret_n::<A, B>() == A);
-//     assert(StructWithAssocFnsAndMethodsWithConstGenerics::fn_ret_m::<A, B>() == B);
-//     assert(StructWithAssocFnsAndMethodsWithConstGenerics::fn_ret_n::<B, A>() == B);
-//     assert(StructWithAssocFnsAndMethodsWithConstGenerics::fn_ret_m::<B, A>() == A);
-// }
+#[inline(never)]
+fn call_all_on_struct_with_assoc_fns_and_methods_with_const_generics_wrapped<const A: u64, const B: u64>() {
+    let s = StructWithAssocFnsAndMethodsWithConstGenerics {};
+    assert(s.method_ret_n::<A, B>() == A);
+    assert(s.method_ret_m::<A, B>() == B);
+    assert(s.method_ret_n::<B, A>() == B);
+    assert(s.method_ret_m::<B, A>() == A);
+    assert(StructWithAssocFnsAndMethodsWithConstGenerics::fn_ret_n::<A, B>() == A);
+    assert(StructWithAssocFnsAndMethodsWithConstGenerics::fn_ret_m::<A, B>() == B);
+    assert(StructWithAssocFnsAndMethodsWithConstGenerics::fn_ret_n::<B, A>() == B);
+    assert(StructWithAssocFnsAndMethodsWithConstGenerics::fn_ret_m::<B, A>() == A);
+    assert(s.method_ret_n::<A, A>() == A);
+    assert(s.method_ret_m::<B, B>() == B);
+    assert(StructWithAssocFnsAndMethodsWithConstGenerics::fn_ret_n::<A, 7>() == A);
+    assert(StructWithAssocFnsAndMethodsWithConstGenerics::fn_ret_m::<7, B>() == B);
+}
+
+#[inline(never)]
+fn forward_const_generics_twice<const N: u64, const M: u64>() {
+    call_all_on_struct_with_assoc_fns_and_methods_with_const_generics_wrapped::<M, N>();
+
+    // The caller and callee use the same names in different orders.
+    let s = StructWithAssocFnsAndMethodsWithConstGenerics {};
+    assert(s.method_ret_n::<M, N>() == M);
+    assert(s.method_ret_m::<M, N>() == N);
+    assert(StructWithAssocFnsAndMethodsWithConstGenerics::fn_ret_n::<M, N>() == M);
+    assert(StructWithAssocFnsAndMethodsWithConstGenerics::fn_ret_m::<M, N>() == N);
+
+    // A concrete specialization must keep its own values.
+    assert(s.method_ret_n::<7, 9>() == 7);
+    assert(StructWithAssocFnsAndMethodsWithConstGenerics::fn_ret_m::<7, 9>() == 9);
+}
+
+fn convert_with_const_generic<S, const K: u64>(s: S) -> str {
+    let _ = K;
+    std::r#str::from_str_array::<S>(s)
+}
+
+fn forward_type_with_const_length<const A: u64>(s: str[A]) {
+    assert(convert_with_const_generic::<str[A], 7>(s) == "ABC");
+}
+
+struct ReceiverWithConstGeneric<const A: u64> {}
+
+impl<const A: u64> ReceiverWithConstGeneric<A> {
+    fn pair<const B: u64>(self) -> (u64, u64) {
+        (A, B)
+    }
+}
+
+fn forward_to_concrete_receiver<const A: u64>() {
+    let receiver: ReceiverWithConstGeneric<7> = ReceiverWithConstGeneric {};
+    assert(receiver.pair::<A>() == (7, A));
+}
+
+fn forward_shadowed_const<const A: u64>() {
+    const A: u64 = 7;
+    assert(A == 7);
+    let receiver = StructWithAssocFnsAndMethodsWithConstGenerics {};
+    assert(receiver.method_ret_n::<A, 9>() == 7);
+    assert(StructWithAssocFnsAndMethodsWithConstGenerics::fn_ret_m::<9, A>() == 7);
+    assert(receiver.method_ret_n::<const_arguments::A, 9>() == 11);
+}
+
+fn convert_with_overlapping_const<S, const B: u64>(s: S) -> str {
+    let _ = B;
+    std::r#str::from_str_array::<S>(s)
+}
+
+fn preserve_mixed_const_scopes<const A: u64, const B: u64>(s: str[B]) {
+    assert(convert_with_overlapping_const::<str[B], A>(s) == "ABC");
+}
 
 fn main(a: [u64; 2]) {
     let _ = __dbg(a);
@@ -218,8 +279,14 @@ fn main(a: [u64; 2]) {
     const_with_const_generics::<5>();
 
     call_all_on_struct_with_assoc_fns_and_methods_with_const_generics();
-    // TODO: Enable this test once https://github.com/FuelLabs/sway/issues/7660 is fixed.
-    // call_all_on_struct_with_assoc_fns_and_methods_with_const_generics_wrapped::<1, 2>();
+    call_all_on_struct_with_assoc_fns_and_methods_with_const_generics_wrapped::<1, 2>();
+    call_all_on_struct_with_assoc_fns_and_methods_with_const_generics_wrapped::<3, 5>();
+    forward_const_generics_twice::<11, 13>();
+    forward_const_generics_twice::<17, 19>();
+    forward_type_with_const_length::<3>(__to_str_array("ABC"));
+    forward_to_concrete_receiver::<3>();
+    forward_shadowed_const::<3>();
+    preserve_mixed_const_scopes::<7, 3>(__to_str_array("ABC"));
 }
 
 #[test]

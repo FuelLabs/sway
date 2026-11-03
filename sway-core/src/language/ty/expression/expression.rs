@@ -1,4 +1,5 @@
 use crate::{
+    ast_elements::type_parameter::{ConstGenericExpr, ConstGenericExprTyDecl},
     decl_engine::*,
     engine_threading::*,
     has_changes,
@@ -13,7 +14,7 @@ use crate::{
     HasChanges,
 };
 use serde::{Deserialize, Serialize};
-use std::{fmt, hash::Hasher};
+use std::{collections::BTreeMap, fmt, hash::Hasher};
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
@@ -456,12 +457,52 @@ impl MaterializeConstGenerics for TyExpression {
                 // Materialize a non-dummy function.
                 let fn_decl = engines.de().get(fn_ref.id());
                 if !fn_decl.is_trait_method_dummy {
-                    let mut type_subst_map = TypeSubstMap::new();
-                    type_subst_map
-                        .const_generics_materialization
-                        .insert(name.to_string(), value.clone());
+                    let mut const_generics = BTreeMap::new();
+                    match type_binding.as_ref().map(|binding| &binding.type_arguments) {
+                        Some(TypeArgs::Regular(args))
+                            if !args.is_empty()
+                                && fn_decl.type_parameters.iter().all(|parameter| {
+                                    matches!(parameter, TypeParameter::Const(_))
+                                }) =>
+                        {
+                            // Arguments name const generics in the caller's scope. Translate
+                            // them to callee parameters before materializing the declaration.
+                            for (parameter, argument) in fn_decl
+                                .type_parameters
+                                .iter()
+                                .filter(|parameter| !parameter.is_from_parent())
+                                .zip(args)
+                            {
+                                let TypeParameter::Const(parameter) = parameter else {
+                                    continue;
+                                };
+                                let argument_name = match argument {
+                                    GenericArgument::Const(argument) => match &argument.expr {
+                                        ConstGenericExpr::AmbiguousVariableExpression {
+                                            ident,
+                                            decl: Some(ConstGenericExprTyDecl::ConstGenericDecl(_)),
+                                        } => Some(ident),
+                                        _ => None,
+                                    },
+                                    GenericArgument::Type(_) => None,
+                                };
+                                if argument_name.is_some_and(|argument| argument.as_str() == name) {
+                                    const_generics
+                                        .insert(parameter.name.as_str().to_string(), value.clone());
+                                }
+                            }
+                        }
+                        _ => {
+                            // Mixed callees can contain caller-owned const references in
+                            // specialized ordinary types. Preserve their existing propagation
+                            // until those references can be distinguished from callee parameters.
+                            const_generics.insert(name.to_string(), value.clone());
+                        }
+                    }
 
                     let mut new_decl = TyFunctionDecl::clone(&*fn_decl);
+                    let mut type_subst_map = TypeSubstMap::new();
+                    type_subst_map.const_generics_materialization = const_generics;
                     if new_decl
                         .subst_inner(&SubstTypesContext {
                             handler,

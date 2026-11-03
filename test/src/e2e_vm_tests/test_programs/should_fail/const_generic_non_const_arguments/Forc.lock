@@ -1,0 +1,8 @@
+[[package]]
+name = "const_generic_non_const_arguments"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-730CE4931DB58AE7"
