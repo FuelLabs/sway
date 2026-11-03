@@ -20,6 +20,11 @@
 //! like `memcpyopt`, this pass assumes callees do not retain argument
 //! pointers beyond the call, and materializes the copy before such calls.
 //!
+//! **Never-worse (pathwise):** every transform keeps per-path `mem_copy_val`
+//! count ≤ the original candidate (sites are not comparable, so a path hits
+//! at most one). More *static* copies are allowed only when some exit path
+//! sheds the copy entirely (side-exit / cluster sinks).
+//!
 //! # Glossary
 //!
 //! Lattice / CFG analysis:
@@ -1416,6 +1421,25 @@ fn push_down_candidate(
     // `keep_candidate` alone is not a transformation (IR unchanged).
     if plan.delegated_reads == 0 && plan.inserts.is_empty() && plan.edge_inserts.is_empty() {
         return Ok(false);
+    }
+
+    // Never-worse (pathwise): replacing one candidate with several sunk sites
+    // is only a win when some path from the candidate reaches an exit without
+    // hitting any site (typically a side / early exit). Otherwise one copy at
+    // the candidate dominates, and coalesce should have retained it — refuse
+    // pure static size growth. See `limit_hoist_side_exit_keeps_sunk.ir`.
+    if !plan.keep_candidate {
+        let site_blocks: FxHashSet<Block> = plan
+            .inserts
+            .iter()
+            .map(|inst| inst.get_instruction(context).unwrap().parent)
+            .chain(plan.edge_inserts.iter().copied())
+            .collect();
+        if site_blocks.len() > 1
+            && every_path_needs_copy(context, candidate.block, &site_blocks)
+        {
+            return Ok(false);
+        }
     }
 
     // Apply the plan.
