@@ -36,7 +36,9 @@
 //! * **in_states_disagree** — at a join, predecessor out-states are not all equal
 //!   (especially when one is still Pending).
 //! * **must_materialize_before_exit** — this block must emit a real `mem_copy_val`
-//!   before its terminator (the set of **pending_pred**s of a live join).
+//!   before its terminator (the set of **pending_pred**s of a live join). After
+//!   dataflow, dominated members are pruned: materializing at a dominator
+//!   already covers paths through a dominated pending_pred.
 //! * **pending_pred** — join predecessor whose out-state is still Pending.
 //! * **multi_succ_pending_pred** — a `pending_pred` with more than one successor
 //!   (insert-before-terminator would fan out; often a critical edge into the join).
@@ -116,6 +118,12 @@
 //! * [`opt_critical_edge_side_exit_before_if.ir`](../../tests/memcpy_push_down/opt_critical_edge_side_exit_before_if.ir)
 //!   — cold exit + `multi_succ_pending_pred` on hot; coalesce PlaceBefore at
 //!   `block_hot` (cold stays copy-free).
+//! * [`opt_nested_join_prune_dominated_pending_pred.ir`](../../tests/memcpy_push_down/opt_nested_join_prune_dominated_pending_pred.ir)
+//!   — nested joins: keep only undominated `must_materialize_before_exit`
+//!   sites; sink to outer `multi_succ_pending_pred`, cold copy-free.
+//! * [`opt_nested_join_retain_over_dominated_pending_pred.ir`](../../tests/memcpy_push_down/opt_nested_join_retain_over_dominated_pending_pred.ir)
+//!   — same nesting without cold exit; prune dominated pending_pred →
+//!   **keep_candidate**.
 //! * Also: [`opt_hoist_three_clusters_side_exit.ir`](../../tests/memcpy_push_down/opt_hoist_three_clusters_side_exit.ir).
 //!
 
@@ -984,6 +992,21 @@ fn candidate_site_absorbed(ob: CandidateSite, absorbed: &[CandidateSite]) -> boo
     })
 }
 
+/// Drop `must_materialize_before_exit` blocks strictly dominated by another
+/// member: a copy before the dominator's terminator already materializes every
+/// path through the dominated block, so a second edge site would make `O`
+/// ill-formed (comparable BeforeTerminators) or double-copy on that path.
+fn prune_dominated_materialize_exits(
+    dom_tree: &DomTree,
+    blocks: &FxHashSet<Block>,
+) -> FxHashSet<Block> {
+    blocks
+        .iter()
+        .copied()
+        .filter(|&b| !blocks.iter().any(|&a| a != b && dom_tree.dominates(a, b)))
+        .collect()
+}
+
 /// Try to push a single candidate copy down. Returns `Ok(true)` if the IR was
 /// modified.
 fn push_down_candidate(
@@ -1284,6 +1307,13 @@ fn push_down_candidate(
         // the edge insert would still be applied (see post-coalesce check).
     }
 
+    // Nested joins can mark both a pending_pred and a dominated descendant.
+    // Keep only undominated edge sites so O stays well-built and no path pays
+    // for two copies. See `opt_nested_join_prune_dominated_pending_pred.ir`.
+    let dom_tree = compute_dom_tree_from_po(context, function, &post_order);
+    let must_materialize_before_exit =
+        prune_dominated_materialize_exits(&dom_tree, &must_materialize_before_exit);
+
     // Build the final plan.
     let mut keep_candidate = false;
     let mut edge_inserts = Vec::new();
@@ -1326,7 +1356,6 @@ fn push_down_candidate(
 
     // Coalesce multiple sunk CandidateSites to their nearest common dominator
     // when every_path_needs_copy (see module docs).
-    let dom_tree = compute_dom_tree_from_po(context, function, &post_order);
     match try_coalesce_candidate_sites(context, function, candidate, &plan, &dom_tree, &reachable) {
         Some(Coalesce::RetainCandidate) => {
             // One copy at the candidate is better than several sunk sites.
