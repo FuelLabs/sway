@@ -1,7 +1,3 @@
-// Two independent diamonds + a side exit. Full ncd(O) is entry and is not
-// anticipated (early exit never hits O). Cluster coalesce still merges each
-// diamond on its own.
-//
 // ```sway
 // fn main(left: bool, right: bool, go: bool, order: Order) -> u64 {
 //     let mut order_copy = order;
@@ -17,12 +13,51 @@
 // }
 // ```
 //
-// Expected from memcpy-push-down:
+// Two diamonds + side exit. Full-set hoist fails every_path_needs_copy;
+// cluster coalesce still merges each diamond. Terms: Glossary in
+// `memcpy_push_down.rs`. Contrast `limit_hoist_side_exit_keeps_sunk` (singletons).
+//
+// CFG (simplified):
+//
+//               ┌─────────────────┐
+//               │      entry      │
+//               │ candidate; cbr  │
+//               └────────┬────────┘
+//                        │
+//          ┌─────────────┴─────────────┐
+//          ▼                           ▼
+// ┌─────────────────┐         ┌─────────────────┐
+// │   block_left    │         │ block_not_left  │
+// │  (inner cbr)    │         │  cbr right      │
+// └────────┬────────┘         └────────┬────────┘
+//     write/fallthrough          ┌─────┴─────┐
+//     → left_join → ret          ▼           ▼
+//                         block_right   early_exit
+//                         (inner cbr)      ret 0
+//                         write/fallthrough
+//                         → right_join → ret
+//
+// Steps:
+//
+// 1. Sunk O has four CandidateSites: BeforeInst in left_write / right_write,
+//    BeforeTerminator on left_fallthrough / right_fallthrough (each region's
+//    live join has a pending_pred on the empty arm).
+// 2. D = ncd(O) = entry. every_path_needs_copy(entry)? No —
+//    entry → not_left → early_exit never hits O.
+// 3. Partition O by dominator-tree children of entry:
+//    - under block_left: {left_write, left_fallthrough}
+//      D' = block_left; every_path_needs_copy(block_left)? Yes → PlaceBefore
+//      (copy at start of block_left before inner cbr).
+//    - under block_not_left: {right_write, right_fallthrough}
+//      recurse → D' = block_right; every_path_needs_copy? Yes → PlaceBefore
+//      at block_right.
+// 4. early_exit stays copy-free. Entry candidate removed.
+//
+// Expected:
 //   A = entry copy disappears,
-//   B = one copy at the start of `block_left` (before the inner cbr),
-//   C = one copy at the start of `block_right` (before the inner cbr),
-//   D = `early_exit` has no copy,
-//   no per-arm copies inside either diamond.
+//   B = one copy at block_left (before inner cbr),
+//   C = one copy at block_right (before inner cbr),
+//   D = early_exit has no copy.
 script {
     entry fn main(left: bool, right: bool, go: bool, order: __ptr { u64, u64 }) -> u64 {
         local mut { u64, u64 } order_copy

@@ -1,16 +1,4 @@
 // ```sway
-// script;
-//
-// struct Order {
-//     a: u64,
-//     prev: u64,
-// }
-//
-// #[inline(never)]
-// fn consume_read_only(order: Order) -> u64 {
-//     order.a
-// }
-//
 // fn main(flag: bool, order: Order) -> u64 {
 //     let mut order_copy = order;
 //     if flag {
@@ -20,12 +8,47 @@
 // }
 // ```
 //
-// An `if` with no `else`: conditional write, then a shared read after the
-// join. Sunk analysis would materialize on both arms; obligation hoisting
-// keeps the single entry copy because every path from entry hits an obligation.
+// Split-edge twin of `limit_critical_edge_live_join`: same Sway, but the
+// false edge is an empty `block_fallthrough` so there is no
+// `multi_succ_pending_pred`. Terms: Glossary in `memcpy_push_down.rs`.
 //
-// Expected from memcpy-push-down:
-//   A = the entry `mem_copy_val` stays (coalesced placement; Modified: false),
+// CFG:
+//
+//               ┌─────────────────┐
+//               │      entry      │
+//               │ candidate; cbr  │
+//               └────────┬────────┘
+//                        │
+//          ┌─────────────┴─────────────┐
+//          │                           │
+//          ▼                           ▼
+// ┌─────────────────┐         ┌─────────────────┐
+// │   block_write   │         │block_fallthrough│
+// │ PartialWrite    │         │ (empty)         │
+// └────────┬────────┘         └────────┬────────┘
+//          │                           │
+//          └─────────────┬─────────────┘
+//                        ▼
+//               ┌─────────────────┐
+//               │    block_join   │
+//               │ consume(copy)   │
+//               └─────────────────┘
+//
+// Steps:
+//
+// 1. After the candidate in `entry`: Pending on both edges.
+// 2. `block_write`: PartialWrite while Pending → CandidateSite::BeforeInst(store);
+//    out-state Materialized.
+// 3. `block_fallthrough`: still Pending; single successor →
+//    must_materialize_before_exit → CandidateSite::BeforeTerminator(fallthrough).
+// 4. `block_join`: in_states_disagree (Materialized vs Pending) and uses_dst;
+//    fallthrough is the pending_pred (already marked). Not multi_succ.
+// 5. O = { BeforeInst(store), BeforeTerminator(fallthrough) }.
+//    D = ncd(O) = entry. every_path_needs_copy(entry): yes (both paths hit O).
+// 6. Coalesce → RetainCandidate: leave the entry mem_copy; no per-arm copies.
+//
+// Expected:
+//   A = entry mem_copy stays (Modified: false),
 //   B/C = no per-arm copies.
 script {
     entry fn main(flag: bool, order: __ptr { u64, u64 }) -> u64 {

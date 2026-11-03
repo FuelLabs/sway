@@ -1,16 +1,4 @@
 // ```sway
-// script;
-//
-// struct Order {
-//     a: u64,
-//     prev: u64,
-// }
-//
-// #[inline(never)]
-// fn consume_read_only(order: Order) -> u64 {
-//     order.a
-// }
-//
 // fn main(flag: bool, order: Order) -> u64 {
 //     let mut order_copy = order;
 //     if flag {
@@ -22,14 +10,49 @@
 // }
 // ```
 //
-// A rebinding copy (`order_copy` = `order`) whose value is mutated on one
-// branch and only read on the other, with both branches joining afterwards.
+// Write on one arm, read-only on the other; join only merges u64 results —
+// not uses_dst for order_copy. Terms: Glossary in `memcpy_push_down.rs`.
 //
-// Expected from memcpy-push-down:
-//   A = the entry `mem_copy_val` disappears,
-//   B = a copy materializes in `block_write`, just before the store,
-//   C = `block_read` calls `consume_read_only` on the source argument directly,
-//   D = nothing is copied at the (dead) join.
+// CFG:
+//
+//               ┌─────────────────┐
+//               │      entry      │
+//               │ candidate; cbr  │
+//               └────────┬────────┘
+//                        │
+//          ┌─────────────┴─────────────┐
+//          ▼                           ▼
+// ┌─────────────────┐         ┌─────────────────┐
+// │   block_write   │         │   block_read    │
+// │ store; consume  │         │ consume (Pending│
+// │ (Materialized)  │         │  → delegate src)│
+// └────────┬────────┘         └────────┬────────┘
+//          │  br join(v)               │  br join(v)
+//          └─────────────┬─────────────┘
+//                        ▼
+//               ┌─────────────────┐
+//               │    block_join   │
+//               │ ret phi (u64)   │  ← not uses_dst for order_copy
+//               └─────────────────┘
+//
+// Steps:
+//
+// 1. After candidate: Pending on both edges.
+// 2. block_write: PartialWrite → CandidateSite::BeforeInst(store); Materialized;
+//    then consume on the private buffer.
+// 3. block_read: still Pending; Read/call → delegate to `order` (rewrite),
+//    no materialize.
+// 4. Out-states into block_join: Materialized vs Pending → in_states_disagree,
+//    but block_join ∉ uses_dst for order_copy (only a u64 block arg).
+//    So no must_materialize_before_exit on block_read — dead join for dst.
+// 5. O = { BeforeInst(store) } only. No edge CandidateSite. No coalesce of
+//    multiple sites. Entry candidate removed; read arm stays copy-free.
+//
+// Expected:
+//   A = entry mem_copy disappears,
+//   B = copy in block_write just before the store,
+//   C = block_read calls consume on the source argument directly,
+//   D = nothing copied at the (dead) join.
 script {
     entry fn main(flag: bool, order: __ptr { u64, u64 }) -> u64 {
         local mut { u64, u64 } order_copy

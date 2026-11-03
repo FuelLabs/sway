@@ -20,107 +20,93 @@
 //! like `memcpyopt`, this pass assumes callees do not retain argument
 //! pointers beyond the call, and materializes the copy before such calls.
 //!
+//! # Glossary
+//!
+//! Lattice / CFG analysis:
+//!
+//! * **NoCopy** — this path never has the candidate copy (killed or never started).
+//! * **Pending** — `dst` still aliased to `src` (logical copy; bytes may not be private).
+//! * **Materialized** — `dst` is an independent private buffer on this path.
+//! * **uses_dst** — a use of `dst` is still reachable from this block.
+//! * **in_states_disagree** — at a join, predecessor out-states are not all equal
+//!   (especially when one is still Pending).
+//! * **must_materialize_before_exit** — this block must emit a real `mem_copy_val`
+//!   before its terminator (the set of **pending_pred**s of a live join).
+//! * **pending_pred** — join predecessor whose out-state is still Pending.
+//! * **multi_succ_pending_pred** — a `pending_pred` with more than one successor
+//!   (insert-before-terminator would fan out; often a critical edge into the join).
+//!
+//! Candidate / plan / coalesce:
+//!
+//! * **candidate** — the `mem_copy_val dst, src` instruction under consideration.
+//! * **CandidateSite** — a sunk *demand* in set `O`: where a materializing copy
+//!   would be inserted (`BeforeInst` or `BeforeTerminator`). Not the same as
+//!   **candidate**.
+//! * **`O`** — the set of all `CandidateSite`s from sunk analysis for one candidate.
+//! * **`D` / `ncd(O)`** — nearest common dominator of every site in `O`.
+//! * **every_path_needs_copy** — every CFG path from `D` to a function exit
+//!   (`ret` / `revert` / other no-successor terminator) visits at least one
+//!   block that owns a site in `O`; hoist profitability check.
+//! * **RetainCandidate** — coalesce chooses to leave the original candidate in
+//!   place rather than sink/re-insert (typically when `D` is already that site).
+//! * **Places / absorbed** — coalesce replaces some sunk sites with fewer
+//!   insert-before points; absorbed sites are removed from the sunk plan.
+//! * **cluster** — a subset of `O` coalesced independently when the full-set
+//!   `ncd` fails `every_path_needs_copy` (partition by dominator-tree children).
+//!
+//! Access classification (what an instruction does to `dst` / `src`):
+//!
+//! * **Read** — load through the pointer (may be delegated to `src` while Pending).
+//! * **PartialWrite** — write that does not cover the whole symbol (forces materialize).
+//! * **FullWrite** — write covering the whole symbol (may kill the copy on that path).
+//! * **MayWrite** — opaque use (mutable call / asm) that may read and write.
+//!
 //! # Join materialization (soundness)
 //!
-//! Forcing only the **immediate** Pending predecessors of a live reconcile
-//! join is enough for correctness. The copy is inserted on the incoming edge
-//! (before that predecessor's terminator). Ancestors above that edge can stay
-//! Pending. A deeper backward walk is not required for join soundness.
+//! Marking only the **immediate** `pending_pred`s of a live join
+//! (`in_states_disagree` && `uses_dst`) is enough for correctness. The copy is
+//! inserted on the incoming edge (before that predecessor's terminator).
+//! Ancestors above that edge can stay Pending.
 //!
-//! Example (`if` with no `else`, then a shared read after the join) —
-//! [`write_inside_if_no_else_read_after.ir`](../../tests/memcpy_push_down/write_inside_if_no_else_read_after.ir):
-//!
-//! ```text
-//! entry ──Pending──► write arm ──Materialized──► join (uses dst)
-//!   └──Pending──► fallthrough ──Pending──────────┘
-//! ```
-//!
-//! Join in-state becomes Materialized (uniform private buffer). Because a
-//! predecessor is still Pending, sunk analysis marks that edge forced (copy
-//! before its `br`). The write arm would materialize before its store. Without
-//! covering the fallthrough edge, the join would see a private buffer on one
-//! path and an uncopied `dst` on the other. Obligation hoisting (below) then
-//! collapses those two sunk sites back to the entry candidate when every path
-//! from their nearest common dominator still hits an obligation.
-//!
-//! Related join-force fixtures:
+//! Related fixtures:
 //! [`sound_join_after_src_mutation.ir`](../../tests/memcpy_push_down/sound_join_after_src_mutation.ir),
 //! [`sound_join_pending_nocopy_live.ir`](../../tests/memcpy_push_down/sound_join_pending_nocopy_live.ir).
 //!
-//! # Obligations and hoisting (profitability)
+//! # CandidateSites and hoisting (profitability)
 //!
-//! Sunk dataflow first records the set `O` of *obligations* — where a
-//! materializing copy would be inserted at the latest safe points:
+//! Sunk dataflow records the set `O` of **CandidateSite**s:
 //!
 //! - before a forcing instruction (`Plan::inserts`);
-//! - before a forced predecessor terminator (`Plan::edge_inserts`).
+//! - before a `must_materialize_before_exit` predecessor terminator
+//!   (`Plan::edge_inserts`).
 //!
-//! If `O` is empty, the win is full elimination / delegate-only (delete the
-//! candidate and only rewrite reads). There is nothing to hoist.
+//! If `O` is empty, the win is full elimination / delegate-only. Otherwise let
+//! `D = ncd(O)`. Hoist to `D` only when **`every_path_needs_copy(D)`**. If not,
+//! partition `O` by dominator-tree children of `D` and retry each subset
+//! recursively (clusters). Well-built `O` must not contain comparable sites
+//! (`assert_well_built_candidate_sites`).
 //!
-//! Otherwise let `D` be the nearest common dominator of every point in `O`
-//! (still after the candidate becomes Pending). Sibling obligations (e.g. both
-//! arms of a branch) share a `D` above the branch; if one obligation already
-//! dominated another on the same path, the first materialization would have
-//! made that path Materialized, so the later site should not appear in a
-//! well-built `O` (enforced by `assert_well_built_obligations`).
+//! A **`multi_succ_pending_pred`** is special: insert-before-terminator fans out
+//! to every successor. Today the pass bails rather than splitting critical edges.
 //!
-//! **Do not always hoist to `D`.** When considering a hoist to `D`, check
-//! whether any path from `D` can still avoid the copy (return/revert without
-//! hitting `O`). If so, keep the sunk sites — that copy-free path is the
-//! profitability win of push-down. Hoist only when every CFG path from `D` to
-//! a function exit visits at least one point in `O`.
+//! # Worked examples (step-by-step in the `.ir` comments)
 //!
-//! If anticipation fails at `D = ncd(O)`, do not give up on the whole set:
-//! partition `O` by dominator-tree children of `D` and retry each subset. A
-//! subset `O'` gets its own `D' = ncd(O')`; if `D'` is anticipated, hoist that
-//! cluster. Repeat recursively. A side exit from the global `ncd` thus blocks
-//! only the too-high merge, not profitable merges in regions below —
-//! [`limit_hoist_side_exit_keeps_sunk.ir`](../../tests/memcpy_push_down/limit_hoist_side_exit_keeps_sunk.ir)
-//! (singleton arms: sunk already optimal),
-//! [`opt_hoist_two_clusters_side_exit.ir`](../../tests/memcpy_push_down/opt_hoist_two_clusters_side_exit.ir)
-//! (two diamonds: one copy per region).
+//! * [`limit_critical_edge_live_join.ir`](../../tests/memcpy_push_down/limit_critical_edge_live_join.ir)
+//!   — `multi_succ_pending_pred`: empty false edge into the join; pass bails.
+//! * [`write_inside_if_no_else_read_after.ir`](../../tests/memcpy_push_down/write_inside_if_no_else_read_after.ir)
+//!   — same Sway with fallthrough split; `every_path_needs_copy(entry)` →
+//!   **RetainCandidate**.
+//! * [`write_inside_if_read_inside_else_join.ir`](../../tests/memcpy_push_down/write_inside_if_read_inside_else_join.ir)
+//!   — join not in `uses_dst` for `order_copy` (dead join); read arm delegates.
+//! * [`limit_hoist_side_exit_keeps_sunk.ir`](../../tests/memcpy_push_down/limit_hoist_side_exit_keeps_sunk.ir)
+//!   — side exit: full `ncd` fails `every_path_needs_copy`; singleton clusters
+//!   leave sunk arm copies.
+//! * [`opt_hoist_two_clusters_side_exit.ir`](../../tests/memcpy_push_down/opt_hoist_two_clusters_side_exit.ir)
+//!   — side exit but two diamonds: recursive clusters → one copy per region.
+//! * [`opt_hoist_nested_cluster_under_side_exit.ir`](../../tests/memcpy_push_down/opt_hoist_nested_cluster_under_side_exit.ir)
+//!   — cold exit off entry; nested if under hot → one copy at `block_hot`.
+//! * Also: [`opt_hoist_three_clusters_side_exit.ir`](../../tests/memcpy_push_down/opt_hoist_three_clusters_side_exit.ir).
 //!
-//! When hoist applies and `D` is exactly where the candidate already sits
-//! (typical if/no-else/join), the pass leaves the entry copy alone rather than
-//! sinking to multiple arm sites.
-//!
-//! Examples (open the IR to see the CFG):
-//!
-//! * if-write / else-fallthrough / join uses `dst` — both paths hit `O`,
-//!   keep one copy before the `if`:
-//!   [`write_inside_if_no_else_read_after.ir`](../../tests/memcpy_push_down/write_inside_if_no_else_read_after.ir).
-//! * both arms write, then join uses `dst` — same shape:
-//!   [`sound_write_both_arms_read_after.ir`](../../tests/memcpy_push_down/sound_write_both_arms_read_after.ir).
-//! * if-write / else-revert — else never hits `O`; do not hoist to entry:
-//!   [`write_inside_if_else_reverts.ir`](../../tests/memcpy_push_down/write_inside_if_else_reverts.ir).
-//! * if-write / else only reads / join does not use `dst` — only the write
-//!   arm is in `O`; do not hoist (else stays copy-free):
-//!   [`write_inside_if_read_inside_else_join.ir`](../../tests/memcpy_push_down/write_inside_if_read_inside_else_join.ir).
-//! * both arms only read, no force — `O` empty; keep delete-entry win:
-//!   [`opt_diamond_both_arms_read.ir`](../../tests/memcpy_push_down/opt_diamond_both_arms_read.ir).
-//! * obligated join arms + side exit from `ncd(O)` — refuse full hoist; each
-//!   arm is a singleton subset so sunk sites stay:
-//!   [`limit_hoist_side_exit_keeps_sunk.ir`](../../tests/memcpy_push_down/limit_hoist_side_exit_keeps_sunk.ir).
-//! * two independent diamonds + side exit — full `ncd` fails anticipation;
-//!   each diamond coalesces on its own:
-//!   [`opt_hoist_two_clusters_side_exit.ir`](../../tests/memcpy_push_down/opt_hoist_two_clusters_side_exit.ir).
-//! * three regions + side exit:
-//!   [`opt_hoist_three_clusters_side_exit.ir`](../../tests/memcpy_push_down/opt_hoist_three_clusters_side_exit.ir).
-//! * nested if/no-else under a hot arm + cold side exit — cluster to `hot`:
-//!   [`opt_hoist_nested_cluster_under_side_exit.ir`](../../tests/memcpy_push_down/opt_hoist_nested_cluster_under_side_exit.ir).
-//!
-//! Obligations are only demand locations. After a hoist to a site other than
-//! the candidate, rewrites are recomputed so paths that become Materialized
-//! earlier do not keep Pending-style delegation to `src`.
-//!
-//! A forced predecessor with multiple successors is still special: inserting
-//! before its terminator runs on every outgoing edge. That is correct when
-//! every successor path is obligated (the anticipation check above); otherwise
-//! this pass refuses rather than splitting critical edges —
-//! [`limit_critical_edge_live_join.ir`](../../tests/memcpy_push_down/limit_critical_edge_live_join.ir)
-//! (same Sway as `write_inside_if_no_else_read_after`, but the fallthrough edge
-//! is not split, so the pass bails).
 
 use rustc_hash::{FxHashMap, FxHashSet};
 use sway_types::FxIndexSet;
@@ -557,41 +543,41 @@ struct Plan {
 
 /// A place where sunk analysis requires a materializing `mem_copy_val`.
 #[derive(Clone, Copy, Debug)]
-enum Obligation {
+enum CandidateSite {
     /// Mid-block force: copy immediately before this instruction.
     BeforeInst(Value),
-    /// Live reconcile edge: copy immediately before this block's terminator.
+    /// Live in_states_disagree edge: copy immediately before this block's terminator.
     BeforeTerminator(Block),
 }
 
 enum Coalesce {
     /// Leave the candidate where it is; do not apply the sunk plan.
-    KeepOriginal,
-    /// Replace the absorbed sunk obligations with these insert-before points.
-    /// Obligations not listed stay at their sunk sites.
+    RetainCandidate,
+    /// Replace the absorbed sunk candidate_sites with these insert-before points.
+    /// CandidateSites not listed stay at their sunk sites.
     Places {
-        absorbed: Vec<Obligation>,
+        absorbed: Vec<CandidateSite>,
         before: Vec<Value>,
     },
 }
 
 struct ClusterCoalesce {
-    obligations: Vec<Obligation>,
+    sites: Vec<CandidateSite>,
     placement: Value,
     keep_candidate: bool,
 }
 
-fn obligation_block(context: &Context, ob: Obligation) -> Block {
+fn candidate_site_block(context: &Context, ob: CandidateSite) -> Block {
     match ob {
-        Obligation::BeforeInst(inst) => inst.get_instruction(context).unwrap().parent,
-        Obligation::BeforeTerminator(block) => block,
+        CandidateSite::BeforeInst(inst) => inst.get_instruction(context).unwrap().parent,
+        CandidateSite::BeforeTerminator(block) => block,
     }
 }
 
-fn obligation_insert_point(context: &Context, ob: Obligation) -> Value {
+fn candidate_site_insert_point(context: &Context, ob: CandidateSite) -> Value {
     match ob {
-        Obligation::BeforeInst(inst) => inst,
-        Obligation::BeforeTerminator(block) => block
+        CandidateSite::BeforeInst(inst) => inst,
+        CandidateSite::BeforeTerminator(block) => block
             .instruction_iter(context)
             .next_back()
             .expect("block must have a terminator"),
@@ -600,20 +586,20 @@ fn obligation_insert_point(context: &Context, ob: Obligation) -> Value {
 
 /// Sunk `O` must not contain two sites where one dominates the other: the
 /// earlier materialization would already have made that path Materialized.
-fn assert_well_built_obligations(
+fn assert_well_built_candidate_sites(
     context: &Context,
     dom_tree: &DomTree,
-    obligations: &[Obligation],
+    sites: &[CandidateSite],
 ) {
-    for (i, &a) in obligations.iter().enumerate() {
-        let pa = obligation_insert_point(context, a);
-        for &b in &obligations[i + 1..] {
-            let pb = obligation_insert_point(context, b);
+    for (i, &a) in sites.iter().enumerate() {
+        let pa = candidate_site_insert_point(context, a);
+        for &b in &sites[i + 1..] {
+            let pb = candidate_site_insert_point(context, b);
             assert!(
                 pa != pb
                     && !dom_tree.dominates_instr(context, pa, pb)
                     && !dom_tree.dominates_instr(context, pb, pa),
-                "well-built obligation set must not contain comparable sites \
+                "well-built CandidateSite set must not contain comparable sites \
                  ({a:?} dominates or equals {b:?}, or vice versa)"
             );
         }
@@ -643,21 +629,21 @@ fn nearest_common_dominator(
 }
 
 /// True when every CFG path from `start` to a function exit visits at least
-/// one block in `obligation_blocks`.
-fn is_anticipated(
+/// one block in `candidate_site_blocks`.
+fn every_path_needs_copy(
     context: &Context,
     start: Block,
-    obligation_blocks: &FxHashSet<Block>,
+    candidate_site_blocks: &FxHashSet<Block>,
 ) -> bool {
     fn check(
         context: &Context,
         block: Block,
         hit: bool,
-        obligation_blocks: &FxHashSet<Block>,
+        candidate_site_blocks: &FxHashSet<Block>,
         memo: &mut FxHashMap<(Block, bool), bool>,
         visiting: &mut FxHashSet<(Block, bool)>,
     ) -> bool {
-        let hit = hit || obligation_blocks.contains(&block);
+        let hit = hit || candidate_site_blocks.contains(&block);
         let key = (block, hit);
         if let Some(&ans) = memo.get(&key) {
             return ans;
@@ -675,7 +661,7 @@ fn is_anticipated(
                     context,
                     s.block,
                     hit,
-                    obligation_blocks,
+                    candidate_site_blocks,
                     memo,
                     visiting,
                 )
@@ -692,24 +678,24 @@ fn is_anticipated(
         context,
         start,
         false,
-        obligation_blocks,
+        candidate_site_blocks,
         &mut memo,
         &mut visiting,
     )
 }
 
-/// Earliest insert point in `d` that still dominates every obligation: the
+/// Earliest insert point in `d` that still dominates every CandidateSite: the
 /// first mid-block force inside `d`, else `d`'s terminator.
-fn coalesce_placement(context: &Context, d: Block, obligations: &[Obligation]) -> Value {
+fn coalesce_placement(context: &Context, d: Block, sites: &[CandidateSite]) -> Value {
     let insts: Vec<Value> = d.instruction_iter(context).collect();
     let mut best: Option<(usize, Value)> = None;
-    for o in obligations {
-        if obligation_block(context, *o) != d {
+    for o in sites {
+        if candidate_site_block(context, *o) != d {
             continue;
         }
         let v = match o {
-            Obligation::BeforeInst(inst) => *inst,
-            Obligation::BeforeTerminator(_) => *insts.last().expect("terminator"),
+            CandidateSite::BeforeInst(inst) => *inst,
+            CandidateSite::BeforeTerminator(_) => *insts.last().expect("terminator"),
         };
         let pos = insts.iter().position(|i| *i == v).unwrap_or(usize::MAX);
         if best.is_none_or(|(bp, _)| pos < bp) {
@@ -866,59 +852,59 @@ fn transfer_with_placements(
     Some(state)
 }
 
-/// Coalesce `obligations` to their ncd when anticipated; otherwise partition by
-/// dominator-tree children of that ncd and retry each subset.
-fn coalesce_obligation_subset(
+/// Coalesce `sites` to their ncd when `every_path_needs_copy`; otherwise
+/// partition by dominator-tree children of that ncd and retry each subset.
+fn coalesce_candidate_site_subset(
     context: &Context,
     candidate: &Candidate,
-    obligations: &[Obligation],
+    sites: &[CandidateSite],
     dom_tree: &DomTree,
     all_blocks: &[Block],
     entry: Block,
 ) -> Vec<ClusterCoalesce> {
-    if obligations.len() <= 1 {
+    if sites.len() <= 1 {
         return Vec::new();
     }
-    let ob_blocks: Vec<Block> = obligations
+    let site_blocks: Vec<Block> = sites
         .iter()
-        .map(|o| obligation_block(context, *o))
+        .map(|o| candidate_site_block(context, *o))
         .collect();
-    if ob_blocks
+    if site_blocks
         .iter()
         .any(|b| !dom_tree.dominates(candidate.block, *b) && *b != candidate.block)
     {
         return Vec::new();
     }
-    let Some(d) = nearest_common_dominator(dom_tree, &ob_blocks, all_blocks, entry) else {
+    let Some(d) = nearest_common_dominator(dom_tree, &site_blocks, all_blocks, entry) else {
         return Vec::new();
     };
     if !dom_tree.dominates(candidate.block, d) && d != candidate.block {
         return Vec::new();
     }
-    let ob_block_set: FxHashSet<Block> = ob_blocks.iter().copied().collect();
-    if is_anticipated(context, d, &ob_block_set) {
-        let placement = coalesce_placement(context, d, obligations);
+    let site_block_set: FxHashSet<Block> = site_blocks.iter().copied().collect();
+    if every_path_needs_copy(context, d, &site_block_set) {
+        let placement = coalesce_placement(context, d, sites);
         let keep_candidate =
             candidate.block == d && candidate_already_at_force(context, candidate, placement);
         return vec![ClusterCoalesce {
-            obligations: obligations.to_vec(),
+            sites: sites.to_vec(),
             placement,
             keep_candidate,
         }];
     }
-    // Full-set hoist is not anticipated (e.g. side exit from `d`). Try each
-    // dominator-tree child as its own subset — a new D' per region.
+    // Full-set hoist is not every_path_needs_copy (e.g. side exit from `d`).
+    // Try each dominator-tree child as its own subset — a new D' per region.
     let mut out = Vec::new();
     for child in dom_tree.children(d) {
-        let sub: Vec<Obligation> = obligations
+        let sub: Vec<CandidateSite> = sites
             .iter()
             .copied()
             .filter(|o| {
-                let b = obligation_block(context, *o);
+                let b = candidate_site_block(context, *o);
                 b == child || dom_tree.dominates(child, b)
             })
             .collect();
-        out.extend(coalesce_obligation_subset(
+        out.extend(coalesce_candidate_site_subset(
             context,
             candidate,
             &sub,
@@ -930,9 +916,10 @@ fn coalesce_obligation_subset(
     out
 }
 
-/// Try to replace sunk obligations with fewer copies at anticipated NCDs,
-/// including per-region clusters when the global NCD is not anticipated.
-fn try_coalesce_obligations(
+/// Try to replace sunk CandidateSites with fewer copies at NCDs where
+/// `every_path_needs_copy`, including per-region clusters when the global NCD
+/// does not.
+fn try_coalesce_candidate_sites(
     context: &Context,
     function: Function,
     candidate: &Candidate,
@@ -940,20 +927,20 @@ fn try_coalesce_obligations(
     dom_tree: &DomTree,
     reachable: &FxHashSet<Block>,
 ) -> Option<Coalesce> {
-    let obligations: Vec<Obligation> = plan
+    let sites: Vec<CandidateSite> = plan
         .inserts
         .iter()
         .copied()
-        .map(Obligation::BeforeInst)
+        .map(CandidateSite::BeforeInst)
         .chain(
             plan.edge_inserts
                 .iter()
                 .copied()
-                .map(Obligation::BeforeTerminator),
+                .map(CandidateSite::BeforeTerminator),
         )
         .collect();
-    assert_well_built_obligations(context, dom_tree, &obligations);
-    if obligations.len() <= 1 {
+    assert_well_built_candidate_sites(context, dom_tree, &sites);
+    if sites.len() <= 1 {
         return None;
     }
 
@@ -962,10 +949,10 @@ fn try_coalesce_obligations(
         .block_iter(context)
         .filter(|b| reachable.contains(b))
         .collect();
-    let clusters = coalesce_obligation_subset(
+    let clusters = coalesce_candidate_site_subset(
         context,
         candidate,
-        &obligations,
+        &sites,
         dom_tree,
         &all_blocks,
         entry,
@@ -977,9 +964,9 @@ fn try_coalesce_obligations(
     // Entire set collapses to the candidate site: leave IR unchanged.
     if clusters.len() == 1
         && clusters[0].keep_candidate
-        && clusters[0].obligations.len() == obligations.len()
+        && clusters[0].sites.len() == sites.len()
     {
-        return Some(Coalesce::KeepOriginal);
+        return Some(Coalesce::RetainCandidate);
     }
 
     let mut absorbed = Vec::new();
@@ -990,7 +977,7 @@ fn try_coalesce_obligations(
             // treat as placing at the candidate force site without deleting it.
             continue;
         }
-        absorbed.extend(cluster.obligations);
+        absorbed.extend(cluster.sites);
         before.push(cluster.placement);
     }
     if absorbed.is_empty() {
@@ -999,10 +986,10 @@ fn try_coalesce_obligations(
     Some(Coalesce::Places { absorbed, before })
 }
 
-fn obligation_absorbed(ob: Obligation, absorbed: &[Obligation]) -> bool {
+fn candidate_site_absorbed(ob: CandidateSite, absorbed: &[CandidateSite]) -> bool {
     absorbed.iter().any(|a| match (a, ob) {
-        (Obligation::BeforeInst(x), Obligation::BeforeInst(y)) => *x == y,
-        (Obligation::BeforeTerminator(x), Obligation::BeforeTerminator(y)) => *x == y,
+        (CandidateSite::BeforeInst(x), CandidateSite::BeforeInst(y)) => *x == y,
+        (CandidateSite::BeforeTerminator(x), CandidateSite::BeforeTerminator(y)) => *x == y,
         _ => false,
     })
 }
@@ -1184,10 +1171,10 @@ fn push_down_candidate(
             Some(state)
         };
 
-    // Blocks from which an access to the destination is still reachable.
-    // Joins outside this set have a dead state: reconciling them would only
-    // insert copies nobody can observe.
-    let mut needed: FxHashSet<Block> = FxHashSet::default();
+    // Blocks from which an access to the destination is still reachable
+    // (`uses_dst`). Joins outside this set have a dead state: marking
+    // pending_preds there would only insert copies nobody can observe.
+    let mut uses_dst: FxHashSet<Block> = FxHashSet::default();
     {
         let mut stack: Vec<Block> = blocks
             .iter()
@@ -1199,7 +1186,7 @@ fn push_down_candidate(
             .copied()
             .collect();
         while let Some(block) = stack.pop() {
-            if needed.insert(block) {
+            if uses_dst.insert(block) {
                 for pred in block.pred_iter(context) {
                     stack.push(*pred);
                 }
@@ -1210,18 +1197,18 @@ fn push_down_candidate(
     // Forward dataflow over the CFG.
     let mut in_state: FxHashMap<Block, (State, bool)> = FxHashMap::default();
     let mut out_state: FxHashMap<Block, State> = FxHashMap::default();
-    let mut forced: FxHashSet<Block> = FxHashSet::default();
+    let mut must_materialize_before_exit: FxHashSet<Block> = FxHashSet::default();
     let entry = function.get_entry_block(context);
     for _round in 0..(blocks.len() * 4 + 16) {
         let mut changed = false;
-        let mut new_forced: Vec<Block> = Vec::new();
+        let mut new_pending_preds: Vec<Block> = Vec::new();
         for block in &rpo {
             // Meet over predecessors.
             let mut preds = block
                 .pred_iter(context)
                 .filter(|p| reachable.contains(p))
                 .peekable();
-            let (state_in, reconcile) = if *block == entry || preds.peek().is_none() {
+            let (state_in, in_states_disagree) = if *block == entry || preds.peek().is_none() {
                 (State::NoCopy, false)
             } else {
                 let mut states = FxIndexSet::default();
@@ -1236,25 +1223,25 @@ fn push_down_candidate(
                     (State::Materialized, false)
                 }
             };
-            if reconcile && needed.contains(block) {
+            if in_states_disagree && uses_dst.contains(block) {
                 for pred in block.pred_iter(context).filter(|p| reachable.contains(p)) {
                     if out_state.get(pred).copied() == Some(State::Pending)
-                        && !forced.contains(pred)
+                        && !must_materialize_before_exit.contains(pred)
                     {
-                        new_forced.push(*pred);
+                        new_pending_preds.push(*pred);
                     }
                 }
             }
             let prev_in = in_state.get(block).copied();
-            if prev_in != Some((state_in, reconcile)) {
-                in_state.insert(*block, (state_in, reconcile));
+            if prev_in != Some((state_in, in_states_disagree)) {
+                in_state.insert(*block, (state_in, in_states_disagree));
                 changed = true;
             }
             let mut no_plan: Option<&mut Plan> = None;
             let Some(out) = scan_block(*block, state_in, &mut no_plan) else {
                 return Ok(false);
             };
-            let out = if forced.contains(block) {
+            let out = if must_materialize_before_exit.contains(block) {
                 State::Materialized
             } else {
                 out
@@ -1264,8 +1251,8 @@ fn push_down_candidate(
                 changed = true;
             }
         }
-        for pred in new_forced {
-            if forced.insert(pred) {
+        for pred in new_pending_preds {
+            if must_materialize_before_exit.insert(pred) {
                 changed = true;
             }
         }
@@ -1278,8 +1265,9 @@ fn push_down_candidate(
     // loop body would be re-executed every iteration. Mid-block Pending is
     // invisible to the in/out check, so a candidate that itself lives in a
     // cycle is also rejected. The join at a loop header can further "hide"
-    // pending by reconciling to Materialized and forcing a preheader edge
-    // copy -- the pass bails on that so a sunk copy can never ride a backedge.
+    // pending by in_states_disagree → Materialized and must_materialize_before_exit
+    // on a preheader edge — the pass bails on that so a sunk copy can never
+    // ride a backedge.
     let cycles = cycle_blocks(context, function);
     if cycles.contains(&candidate.block) {
         return Ok(false);
@@ -1292,7 +1280,7 @@ fn push_down_candidate(
         }
     }
     for block in &rpo {
-        if !forced.contains(block) {
+        if !must_materialize_before_exit.contains(block) {
             continue;
         }
         if block
@@ -1302,9 +1290,9 @@ fn push_down_candidate(
         {
             return Ok(false);
         }
-        // A forced pred with multiple successors is a critical-edge join:
-        // inserting at the pred terminator would also run on edges that do
-        // not need the copy. This pass does not split critical edges, so bail.
+        // A multi_succ_pending_pred: inserting at the terminator would also run
+        // on edges that do not need the copy. This pass does not split critical
+        // edges, so bail. See `limit_critical_edge_live_join.ir`.
         if block.successors(context).len() > 1 {
             return Ok(false);
         }
@@ -1314,7 +1302,7 @@ fn push_down_candidate(
     let mut keep_candidate = false;
     let mut edge_inserts = Vec::new();
     for block in &rpo {
-        if !forced.contains(block) {
+        if !must_materialize_before_exit.contains(block) {
             continue;
         }
         let terminator = block
@@ -1333,7 +1321,7 @@ fn push_down_candidate(
         inserts: Vec::new(),
         edge_inserts,
         delegated_reads: 0,
-        off_block_materializations: forced.iter().filter(|b| **b != candidate.block).count(),
+        off_block_materializations: must_materialize_before_exit.iter().filter(|b| **b != candidate.block).count(),
         keep_candidate,
     };
     for block in &rpo {
@@ -1347,10 +1335,10 @@ fn push_down_candidate(
         }
     }
 
-    // Coalesce multiple sunk obligations to their nearest common dominator when
-    // every path from that point still hits an obligation (see module docs).
+    // Coalesce multiple sunk CandidateSites to their nearest common dominator
+    // when every_path_needs_copy (see module docs).
     let dom_tree = compute_dom_tree_from_po(context, function, &post_order);
-    match try_coalesce_obligations(
+    match try_coalesce_candidate_sites(
         context,
         function,
         candidate,
@@ -1358,15 +1346,15 @@ fn push_down_candidate(
         &dom_tree,
         &reachable,
     ) {
-        Some(Coalesce::KeepOriginal) => {
+        Some(Coalesce::RetainCandidate) => {
             // One copy at the candidate is better than several sunk sites.
             return Ok(false);
         }
         Some(Coalesce::Places { absorbed, before }) => {
             plan.inserts
-                .retain(|inst| !obligation_absorbed(Obligation::BeforeInst(*inst), &absorbed));
+                .retain(|inst| !candidate_site_absorbed(CandidateSite::BeforeInst(*inst), &absorbed));
             plan.edge_inserts
-                .retain(|block| !obligation_absorbed(Obligation::BeforeTerminator(*block), &absorbed));
+                .retain(|block| !candidate_site_absorbed(CandidateSite::BeforeTerminator(*block), &absorbed));
             plan.inserts.extend(before.iter().copied());
             plan.rewrites.clear();
             plan.delegated_reads = 0;

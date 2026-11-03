@@ -1,12 +1,4 @@
-// LIMIT: no critical-edge splitting.
-//
-// Why: a live join of `Pending` and `Materialized` wants a copy only on the
-// pending incoming edge. If that edge's predecessor has another successor,
-// inserting at the pred terminator would also run on the non-pending edge.
-// This pass does not split critical edges, so it bails.
-//
-// Contrast: `write_inside_if_no_else_read_after` is the same Sway with the
-// fall-through edge already split — there the pass *does* optimize.
+// LIMIT: `multi_succ_pending_pred` — no critical-edge splitting yet.
 //
 // ```sway
 // fn main(flag: bool, order: Order) -> u64 {
@@ -17,6 +9,70 @@
 //     consume_read_only(order_copy)
 // }
 // ```
+//
+// Contrast: `write_inside_if_no_else_read_after` is the same Sway with the
+// fall-through edge already split — there the pass *does* optimize.
+//
+// Terms: see Glossary in `sway-ir/src/optimize/memcpy_push_down.rs`.
+//
+// CFG (empty false branch — no fallthrough block):
+//
+//               ┌─────────────────┐
+//               │      entry      │
+//               │    (cbr flag)   │
+//               └────────┬────────┘
+//                        │
+//          ┌─────────────┴─────────────┐
+//          │                           │
+//          │ flag == true              │ flag == false
+//          │ entry → block_write       │ entry → block_join
+//          ▼                           │
+// ┌─────────────────┐                  │
+// │   block_write   │                  │
+// │ store to copy   │                  │
+// └────────┬────────┘                  │
+//          │                           │
+//          │ block_write → block_join  │
+//          │                           │
+//          ▼                           ▼
+//               ┌─────────────────┐
+//               │    block_join   │
+//               │ consume(copy)   │
+//               └─────────────────┘
+//
+// Steps that mark `entry` with must_materialize_before_exit:
+//
+// 1. Pending after the candidate
+//    In `entry`, after the logical copy: state = Pending.
+//    Out-state(entry) = Pending on both outgoing edges.
+//
+// 2. block_write
+//    In-state Pending → partial write → materialize on that path.
+//    Out-state(block_write) = Materialized.
+//    Edge block_write → block_join arrives Materialized.
+//
+// 3. Empty false edge
+//    entry → block_join carries Pending straight into the join (no intermediate
+//    block).
+//
+// 4. Meet at block_join → in_states_disagree
+//    Pred out-states: Materialized vs Pending → join in-state Materialized,
+//    in_states_disagree = true.
+//
+// 5. uses_dst
+//    consume(order_copy) → block_join ∈ uses_dst. The disagreement matters.
+//
+// 6. must_materialize_before_exit on the pending pred
+//    Pending predecessor of the join = entry.
+//    Mark must_materialize_before_exit(entry).
+//    So entry is a pending_pred.
+//
+// 7. multi_succ_pending_pred
+//    entry has two successors (block_write, block_join) → it is a
+//    multi_succ_pending_pred: we need a private buffer on entry → block_join,
+//    but insert-before-terminator would also run on entry → block_write.
+//    Today the pass bails rather than splitting that critical edge or
+//    deferring to CandidateSite coalesce.
 //
 // Expected from memcpy-push-down: opt does nothing —
 //   A = the entry `mem_copy_val` stays put.

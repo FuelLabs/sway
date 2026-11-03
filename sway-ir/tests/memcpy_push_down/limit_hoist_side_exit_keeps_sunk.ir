@@ -1,6 +1,3 @@
-// LIMIT: full-set hoist to ncd(O) is not anticipated when a side exit from
-// that dominator never hits an obligation.
-//
 // ```sway
 // fn main(take_write: bool, take_join: bool, order: Order) -> u64 {
 //     let mut order_copy = order;
@@ -15,18 +12,52 @@
 // }
 // ```
 //
-// CFG: `ncd(O) = entry`, but `entry → rest → early_exit` never visits O.
-// Current algo: refuse hoist; keep sunk materializations on the two obligated
-// arms only. The side exit stays copy-free.
+// Side exit from ncd(O): full hoist refused; cluster retry cannot merge
+// (singleton arms). Terms: Glossary in `memcpy_push_down.rs`.
+// Contrast `opt_hoist_two_clusters_side_exit` (subsets merge).
 //
-// Cluster retry cannot help here: each obligated arm is already a singleton
-// subset. Contrast `opt_hoist_two_clusters_side_exit`, where subsets merge.
+// CFG:
 //
-// Expected from memcpy-push-down:
-//   A = the entry `mem_copy_val` disappears,
-//   B = a copy materializes in `block_write` before the store,
-//   C = a copy materializes on `block_fallthrough` before its `br`,
-//   D = `block_early_exit` has no copy.
+//               ┌─────────────────┐
+//               │      entry      │
+//               │ candidate; cbr  │
+//               └────────┬────────┘
+//                        │
+//          ┌─────────────┴─────────────┐
+//          ▼                           ▼
+// ┌─────────────────┐         ┌─────────────────┐
+// │   block_write   │         │   block_rest    │
+// │ PartialWrite    │         │  cbr take_join  │
+// └────────┬────────┘         └────────┬────────┘
+//          │                     ┌─────┴─────┐
+//          │                     ▼           ▼
+//          │              fallthrough   early_exit
+//          │                     │         ret 0
+//          └──────────┬──────────┘
+//                     ▼
+//              ┌─────────────────┐
+//              │    block_join   │
+//              │ consume(copy)   │
+//              └─────────────────┘
+//
+// Steps:
+//
+// 1. Sunk O = { BeforeInst(store in block_write),
+//               BeforeTerminator(block_fallthrough) }
+//    (join uses_dst + in_states_disagree → fallthrough is pending_pred).
+// 2. D = ncd(O) = entry. every_path_needs_copy(entry)? No —
+//    entry → rest → early_exit never hits O.
+// 3. Partition by children of entry:
+//    - under block_write: only {store} → singleton, no coalesce.
+//    - under block_rest: only {fallthrough} → singleton, no coalesce.
+// 4. Keep sunk Places: copy before store, copy before fallthrough br.
+//    Entry candidate removed. early_exit copy-free.
+//
+// Expected:
+//   A = entry mem_copy disappears,
+//   B = copy in block_write before the store,
+//   C = copy on block_fallthrough before its br,
+//   D = block_early_exit has no copy.
 script {
     entry fn main(take_write: bool, take_join: bool, order: __ptr { u64, u64 }) -> u64 {
         local mut { u64, u64 } order_copy

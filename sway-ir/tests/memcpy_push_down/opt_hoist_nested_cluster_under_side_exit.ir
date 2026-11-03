@@ -1,7 +1,3 @@
-// Side exit off entry, and under the hot arm a *nested* if/no-else join.
-// Global ncd fails; the hot arm's subset coalesces to `hot` (not sunk into
-// both inner arms).
-//
 // ```sway
 // fn main(hot: bool, inner: bool, order: Order) -> u64 {
 //     let mut order_copy = order;
@@ -14,11 +10,49 @@
 // }
 // ```
 //
+// Cold side exit off entry; nested if/no-else under hot. Cluster coalesce
+// places one copy at block_hot. Terms: Glossary in `memcpy_push_down.rs`.
+//
+// CFG:
+//
+//               ┌─────────────────┐
+//               │      entry      │
+//               │ candidate; cbr  │
+//               └────────┬────────┘
+//                        │
+//          ┌─────────────┴─────────────┐
+//          ▼                           ▼
+// ┌─────────────────┐         ┌─────────────────┐
+// │   block_hot     │         │ block_cold_exit │
+// │  (inner cbr)    │         │     ret 0       │
+// └────────┬────────┘         └─────────────────┘
+//          │
+//    ┌─────┴─────┐
+//    ▼           ▼
+// inner_write  inner_fallthrough
+//    │           │
+//    └─────┬─────┘
+//          ▼
+//     inner_join
+//     consume(copy) → ret
+//
+// Steps:
+//
+// 1. Sunk O = { BeforeInst(store in inner_write),
+//               BeforeTerminator(inner_fallthrough) }
+//    (inner_join uses_dst + pending fallthrough arm).
+// 2. D = ncd(O) = block_hot (not entry: cold_exit has no sites).
+//    every_path_needs_copy(block_hot)? Yes — both inner arms hit O.
+// 3. Coalesce → PlaceBefore(cbr in block_hot). Absorb both sunk sites.
+// 4. Entry candidate removed. cold_exit never runs a copy.
+//    (If we had tried D = entry, every_path_needs_copy would fail on cold_exit;
+//    the tighter ncd already avoids that.)
+//
 // Expected:
 //   A = entry copy disappears,
-//   B = one copy at `hot` before the inner cbr,
-//   C = `cold_exit` has no copy,
-//   no copies in `inner_write` / `inner_fallthrough`.
+//   B = one copy at block_hot before the inner cbr,
+//   C = cold_exit has no copy,
+//   no copies in inner_write / inner_fallthrough.
 script {
     entry fn main(hot: bool, inner: bool, order: __ptr { u64, u64 }) -> u64 {
         local mut { u64, u64 } order_copy
