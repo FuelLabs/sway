@@ -67,12 +67,12 @@
 //    Mark must_materialize_before_exit(entry).
 //    So entry is a pending_pred.
 //
-// 7. multi_succ_pending_pred
+// 7. multi_succ_pending_pred + keep_candidate
 //    entry has two successors (block_write, block_join) → it is a
-//    multi_succ_pending_pred: we need a private buffer on entry → block_join,
-//    but insert-before-terminator would also run on entry → block_write.
-//    Today the pass bails rather than splitting that critical edge or
-//    deferring to CandidateSite coalesce.
+//    multi_succ_pending_pred. Forcing entry materializes its out-state, so
+//    the write arm does not add a separate BeforeInst(store). The candidate
+//    already sits immediately before entry's terminator → keep_candidate,
+//    empty edge_inserts. One copy at entry is optimal; no rewrite.
 //
 // Expected from memcpy-push-down: opt does nothing —
 //   A = the entry `mem_copy_val` stays put.

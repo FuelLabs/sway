@@ -87,12 +87,15 @@
 //! (`assert_well_built_candidate_sites`).
 //!
 //! A **`multi_succ_pending_pred`** is special: insert-before-terminator fans out
-//! to every successor. Today the pass bails rather than splitting critical edges.
+//! to every successor. The pass records it in `O` (and may coalesce it away).
+//! If the edge insert remains, it is applied only when every successor path
+//! still needs `dst` (`every_path_needs_copy` over `uses_dst`); otherwise the
+//! pass bails rather than splitting the critical edge.
 //!
 //! # Worked examples (step-by-step in the `.ir` comments)
 //!
 //! * [`limit_critical_edge_live_join.ir`](../../tests/memcpy_push_down/limit_critical_edge_live_join.ir)
-//!   — `multi_succ_pending_pred`: empty false edge into the join; pass bails.
+//!   — `multi_succ_pending_pred` at entry; `keep_candidate` → IR unchanged.
 //! * [`write_inside_if_no_else_read_after.ir`](../../tests/memcpy_push_down/write_inside_if_no_else_read_after.ir)
 //!   — same Sway with fallthrough split; `every_path_needs_copy(entry)` →
 //!   **RetainCandidate**.
@@ -105,6 +108,9 @@
 //!   — side exit but two diamonds: recursive clusters → one copy per region.
 //! * [`opt_hoist_nested_cluster_under_side_exit.ir`](../../tests/memcpy_push_down/opt_hoist_nested_cluster_under_side_exit.ir)
 //!   — cold exit off entry; nested if under hot → one copy at `block_hot`.
+//! * [`opt_critical_edge_side_exit_before_if.ir`](../../tests/memcpy_push_down/opt_critical_edge_side_exit_before_if.ir)
+//!   — cold exit + `multi_succ_pending_pred` on hot; coalesce PlaceBefore at
+//!   `block_hot` (cold stays copy-free).
 //! * Also: [`opt_hoist_three_clusters_side_exit.ir`](../../tests/memcpy_push_down/opt_hoist_three_clusters_side_exit.ir).
 //!
 
@@ -1290,12 +1296,8 @@ fn push_down_candidate(
         {
             return Ok(false);
         }
-        // A multi_succ_pending_pred: inserting at the terminator would also run
-        // on edges that do not need the copy. This pass does not split critical
-        // edges, so bail. See `limit_critical_edge_live_join.ir`.
-        if block.successors(context).len() > 1 {
-            return Ok(false);
-        }
+        // multi_succ_pending_pred: keep in O for coalesce; bail later only if
+        // the edge insert would still be applied (see post-coalesce check).
     }
 
     // Build the final plan.
@@ -1390,6 +1392,23 @@ fn push_down_candidate(
             }
         }
         None => {}
+    }
+
+    // A remaining multi_succ_pending_pred edge insert fans out to every
+    // successor. Allow that only when every successor path still needs `dst`
+    // (fan-out is then both sound and not wasted on a free side exit).
+    // Otherwise refuse rather than split the critical edge.
+    // See `opt_critical_edge_side_exit_before_if.ir` (allowed) vs a side exit
+    // off the multi_succ block itself (bail).
+    for pred in &plan.edge_inserts {
+        if pred.successors(context).len() > 1 {
+            let fanout_ok = pred.successors(context).iter().all(|succ| {
+                every_path_needs_copy(context, succ.block, &uses_dst)
+            });
+            if !fanout_ok {
+                return Ok(false);
+            }
+        }
     }
 
     // Profitability: at least one read must be delegated, or the copy must
