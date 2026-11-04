@@ -13,6 +13,10 @@
 // Write on one arm, read-only on the other; join only merges u64 results —
 // not uses_dst for order_copy. Terms: Glossary in `memcpy_push_down.rs`.
 //
+// Canonical sink+delegate diamond. Same pass decision covers Sway surfaces
+// that lower to this family (if-let / else-if / match / && / || / call-only
+// fallthrough). Direct field-load twin: `write_inside_if_read_inside_else`.
+//
 // CFG:
 //
 //               ┌─────────────────┐

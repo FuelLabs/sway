@@ -19,6 +19,9 @@
 // }
 // ```
 //
+// Direct field-load twin of `write_inside_if_read_inside_else_join` (no call,
+// no u64 join). Confirms Read→delegate rebuilds a GEP off `src` in-place.
+//
 // Expected from memcpy-push-down:
 //   A = the entry `mem_copy_val` disappears,
 //   B = a copy materializes in `block_write`, just before the store,

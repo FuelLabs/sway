@@ -23,9 +23,10 @@
 // }
 // ```
 //
-// Inverse of `write_inside_if_read_outside`: here the read happens
-// inside the `if` and the write happens outside it, on the fall-through
-// path reached while the copy is still pending.
+// Inverse of the sink+delegate write-then-read diamond
+// (`write_inside_if_read_inside_else_join`): here the read happens inside
+// the `if` and the write happens outside it, on the fall-through path
+// reached while the copy is still pending.
 //
 // Expected from memcpy-push-down:
 //   A = the entry `mem_copy_val` disappears,

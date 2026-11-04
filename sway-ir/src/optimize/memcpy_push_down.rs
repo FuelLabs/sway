@@ -90,8 +90,10 @@
 //! If `O` is empty, the win is full elimination / delegate-only. Otherwise let
 //! `D = ncd(O)`. Hoist to `D` only when **`every_path_needs_copy(D)`**. If not,
 //! partition `O` by dominator-tree children of `D` and retry each subset
-//! recursively (clusters). Well-built `O` must not contain comparable sites
-//! (`assert_well_built_candidate_sites`).
+//! recursively (clusters). Invariants checked with `assert!`: well-built `O`
+//! (no comparable sites), sites under the candidate, undominated
+//! `must_materialize_before_exit` after prune, coalesce placement dominates
+//! its cluster, and no unexpected subset `keep_candidate`.
 //!
 //! A **`multi_succ_pending_pred`** is special: insert-before-terminator fans out
 //! to every successor. The pass records it in `O` (and may coalesce it away).
@@ -124,7 +126,6 @@
 //! * [`opt_nested_join_retain_over_dominated_pending_pred.ir`](../../tests/memcpy_push_down/opt_nested_join_retain_over_dominated_pending_pred.ir)
 //!   — same nesting without cold exit; prune dominated pending_pred →
 //!   **keep_candidate**.
-//! * Also: [`opt_hoist_three_clusters_side_exit.ir`](../../tests/memcpy_push_down/opt_hoist_three_clusters_side_exit.ir).
 //!
 
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -603,6 +604,20 @@ fn candidate_site_insert_point(context: &Context, ob: CandidateSite) -> Value {
     }
 }
 
+fn plan_candidate_sites(plan: &Plan) -> Vec<CandidateSite> {
+    plan.inserts
+        .iter()
+        .copied()
+        .map(CandidateSite::BeforeInst)
+        .chain(
+            plan.edge_inserts
+                .iter()
+                .copied()
+                .map(CandidateSite::BeforeTerminator),
+        )
+        .collect()
+}
+
 /// Sunk `O` must not contain two sites where one dominates the other: the
 /// earlier materialization would already have made that path Materialized.
 fn assert_well_built_candidate_sites(
@@ -622,6 +637,52 @@ fn assert_well_built_candidate_sites(
                  ({a:?} dominates or equals {b:?}, or vice versa)"
             );
         }
+    }
+}
+
+/// Pending starts at the candidate, so every materialization site must lie
+/// on a path dominated by the candidate block (or be that block).
+fn assert_sites_under_candidate(
+    context: &Context,
+    dom_tree: &DomTree,
+    candidate: &Candidate,
+    sites: &[CandidateSite],
+) {
+    for &site in sites {
+        let b = candidate_site_block(context, site);
+        assert!(
+            b == candidate.block || dom_tree.dominates(candidate.block, b),
+            "CandidateSite {site:?} must be dominated by the candidate block"
+        );
+    }
+}
+
+/// Pruned `must_materialize_before_exit` must have no dominated pairs.
+fn assert_undominated_blocks(dom_tree: &DomTree, blocks: &FxHashSet<Block>) {
+    for &a in blocks {
+        for &b in blocks {
+            assert!(
+                a == b || !dom_tree.dominates(a, b),
+                "must_materialize_before_exit must be undominated after prune \
+                 ({a:?} dominates {b:?})"
+            );
+        }
+    }
+}
+
+/// A coalesced placement must dominate every absorbed site's insert point.
+fn assert_placement_dominates_sites(
+    context: &Context,
+    dom_tree: &DomTree,
+    placement: Value,
+    sites: &[CandidateSite],
+) {
+    for &site in sites {
+        let pb = candidate_site_insert_point(context, site);
+        assert!(
+            dom_tree.dominates_instr(context, placement, pb),
+            "coalesce placement must dominate CandidateSite {site:?}"
+        );
     }
 }
 
@@ -714,8 +775,15 @@ fn coalesce_placement(context: &Context, d: Block, sites: &[CandidateSite]) -> V
             best = Some((pos, v));
         }
     }
-    best.map(|(_, v)| v)
-        .unwrap_or_else(|| *insts.last().expect("block must have a terminator"))
+    let v = best
+        .map(|(_, v)| v)
+        .unwrap_or_else(|| *insts.last().expect("block must have a terminator"));
+    assert_eq!(
+        v.get_instruction(context).unwrap().parent,
+        d,
+        "coalesce placement must be an instruction of the NCD block"
+    );
+    v
 }
 
 /// Recompute delegated-read rewrites assuming materialization at each point in
@@ -896,6 +964,7 @@ fn coalesce_candidate_site_subset(
     let site_block_set: FxHashSet<Block> = site_blocks.iter().copied().collect();
     if every_path_needs_copy(context, d, &site_block_set) {
         let placement = coalesce_placement(context, d, sites);
+        assert_placement_dominates_sites(context, dom_tree, placement, sites);
         let keep_candidate =
             candidate.block == d && candidate_already_at_force(context, candidate, placement);
         return vec![ClusterCoalesce {
@@ -934,19 +1003,9 @@ fn try_coalesce_candidate_sites(
     dom_tree: &DomTree,
     reachable: &FxHashSet<Block>,
 ) -> Option<Coalesce> {
-    let sites: Vec<CandidateSite> = plan
-        .inserts
-        .iter()
-        .copied()
-        .map(CandidateSite::BeforeInst)
-        .chain(
-            plan.edge_inserts
-                .iter()
-                .copied()
-                .map(CandidateSite::BeforeTerminator),
-        )
-        .collect();
+    let sites = plan_candidate_sites(plan);
     assert_well_built_candidate_sites(context, dom_tree, &sites);
+    assert_sites_under_candidate(context, dom_tree, candidate, &sites);
     if sites.len() <= 1 {
         return None;
     }
@@ -970,11 +1029,13 @@ fn try_coalesce_candidate_sites(
     let mut absorbed = Vec::new();
     let mut before = Vec::new();
     for cluster in clusters {
-        if cluster.keep_candidate {
-            // Subset keep-candidate under a partial coalesce is not expected;
-            // treat as placing at the candidate force site without deleting it.
-            continue;
-        }
+        // keep_candidate is only valid for the full-set RetainCandidate case
+        // handled above; a partial/subset keep would silently drop sites.
+        assert!(
+            !cluster.keep_candidate,
+            "keep_candidate only expected when the full site set coalesces to the candidate"
+        );
+        assert_placement_dominates_sites(context, dom_tree, cluster.placement, &cluster.sites);
         absorbed.extend(cluster.sites);
         before.push(cluster.placement);
     }
@@ -1313,6 +1374,7 @@ fn push_down_candidate(
     let dom_tree = compute_dom_tree_from_po(context, function, &post_order);
     let must_materialize_before_exit =
         prune_dominated_materialize_exits(&dom_tree, &must_materialize_before_exit);
+    assert_undominated_blocks(&dom_tree, &must_materialize_before_exit);
 
     // Build the final plan.
     let mut keep_candidate = false;
@@ -1401,6 +1463,10 @@ fn push_down_candidate(
             ) {
                 return Ok(false);
             }
+            // Coalesce must leave O well-built and under the candidate.
+            let sites = plan_candidate_sites(&plan);
+            assert_well_built_candidate_sites(context, &dom_tree, &sites);
+            assert_sites_under_candidate(context, &dom_tree, candidate, &sites);
         }
         None => {}
     }
@@ -1445,6 +1511,13 @@ fn push_down_candidate(
         if site_blocks.len() > 1 && every_path_needs_copy(context, candidate.block, &site_blocks) {
             return Ok(false);
         }
+    }
+
+    // Final O: still well-built and under the candidate before mutating IR.
+    {
+        let sites = plan_candidate_sites(&plan);
+        assert_well_built_candidate_sites(context, &dom_tree, &sites);
+        assert_sites_under_candidate(context, &dom_tree, candidate, &sites);
     }
 
     // Apply the plan.

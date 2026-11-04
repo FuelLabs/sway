@@ -4,6 +4,11 @@
 // re-execute a materialized copy every iteration, or require loop-aware
 // reasoning this pass does not do.
 //
+// Canonical cycle-bail. Same gate covers write-in-loop, break/continue,
+// while-let, nested loops, and read-then-post-loop-write shapes. Distinct:
+// `limit_candidate_inside_loop` (candidate home block cyclic) and the
+// positive control `write_before_loop_read_inside`.
+//
 // ```sway
 // fn main(n: u64, order: Order) -> u64 {
 //     let mut order_copy = order;

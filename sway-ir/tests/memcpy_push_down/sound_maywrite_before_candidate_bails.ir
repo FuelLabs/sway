@@ -1,5 +1,7 @@
 // SOUNDNESS: a mutable use of `dst` *before* the candidate copy means an
 // invisible alias may already exist; the pass must refuse the candidate.
+// Same MayWrite-before-candidate gate for `asm` (no separate fixture).
+// Src-side twin: `sound_maywrite_src_before_candidate_bails`.
 //
 // ```sway
 // fn main(flag: bool, order: Order) -> u64 {

@@ -2,6 +2,8 @@
 // that path — no materialization of the original source is needed, because
 // the old value is dead. The overwrite itself is a whole-aggregate `store`
 // (not a second `mem_copy_val` candidate) so the kill is visible in one pass.
+// `mem_clear_val` is the same FullWrite kill; opcode-specific kill vs force:
+// `sound_mem_copy_bytes_full_kill` / `sound_mem_copy_bytes_partial_force`.
 //
 // ```sway
 // fn main(flag: bool, order: Order, other: Order) -> u64 {

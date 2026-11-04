@@ -23,7 +23,8 @@
 // ```
 //
 // Diverging `else`: the revert arm never joins, so there is no live join and
-// the copy only needs to materialize on the write path.
+// the copy only needs to materialize on the write path. Same decision for a
+// match arm that reverts (no separate fixture).
 //
 // Expected from memcpy-push-down:
 //   A = the entry `mem_copy_val` disappears,

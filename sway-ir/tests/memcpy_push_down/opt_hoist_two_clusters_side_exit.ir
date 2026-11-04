@@ -16,6 +16,7 @@
 // Two diamonds + side exit. Full-set hoist fails every_path_needs_copy;
 // cluster coalesce still merges each diamond. Terms: Glossary in
 // `memcpy_push_down.rs`. Contrast `limit_hoist_side_exit_keeps_sunk` (singletons).
+// Recursive clustering is the same for N>2 regions; two is enough.
 //
 // CFG (simplified):
 //
