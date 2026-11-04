@@ -190,7 +190,80 @@ impl<const A: u64> ReceiverWithConstGeneric<A> {
 
 fn forward_to_concrete_receiver<const A: u64>() {
     let receiver: ReceiverWithConstGeneric<7> = ReceiverWithConstGeneric {};
+    assert(receiver.pair::<9>() == (7, 9));
     assert(receiver.pair::<A>() == (7, A));
+}
+
+impl<const A: u64> [u64; A] {
+    fn const_pair<const B: u64>(self) -> (u64, u64) {
+        (A, B)
+    }
+}
+
+trait ConstPair {
+    fn associated_const_pair<const B: u64>() -> (u64, u64);
+}
+
+impl<const A: u64> ConstPair for [u64; A] {
+    fn associated_const_pair<const B: u64>() -> (u64, u64) {
+        (A, B)
+    }
+}
+
+fn forward_to_generic_array<const A: u64>(array: [u64; A]) {
+    assert(array.const_pair::<9>() == (A, 9));
+    assert(array.const_pair::<A>() == (A, A));
+    assert(<[u64; A] as ConstPair>::associated_const_pair::<9>() == (A, 9));
+    assert(<[u64; A] as ConstPair>::associated_const_pair::<A>() == (A, A));
+}
+
+fn forward_to_concrete_array<const A: u64>() {
+    assert([1, 2].const_pair::<9>() == (2, 9));
+    assert([1, 2].const_pair::<A>() == (2, A));
+}
+
+impl<const A: u64> str[A] {
+    fn const_pair<const B: u64>(self) -> (u64, u64) {
+        (A, B)
+    }
+}
+
+fn forward_to_generic_string<const A: u64>(string: str[A]) {
+    assert(string.const_pair::<9>() == (A, 9));
+    assert(string.const_pair::<A>() == (A, A));
+}
+
+fn forward_to_concrete_string<const A: u64>() {
+    let string = __to_str_array("ABC");
+    assert(string.const_pair::<A>() == (3, A));
+}
+
+impl<const A: u64, const C: u64> [[u64; A]; C] {
+    fn const_triple<const B: u64>(self) -> (u64, u64, u64) {
+        (A, C, B)
+    }
+}
+
+fn forward_to_nested_array<const A: u64, const C: u64>(array: [[u64; A]; C]) {
+    assert(array.const_triple::<9>() == (A, C, 9));
+    assert(array.const_triple::<A>() == (A, C, A));
+    assert(array.const_triple::<C>() == (A, C, C));
+}
+
+impl<const A: u64> &[u64; A] {
+    fn referenced_pair<const B: u64>(self) -> (u64, u64) {
+        (A, B)
+    }
+}
+
+fn forward_to_array_reference<const A: u64>(array: &[u64; A]) {
+    assert(array.referenced_pair::<9>() == (A, 9));
+    assert(array.referenced_pair::<A>() == (A, A));
+}
+
+fn preserve_nested_receiver_consts<const A: u64>() {
+    assert([[1, 2, 3], [4, 5, 6]].const_triple::<A>() == (3, 2, A));
+    assert((&[1, 2, 3]).referenced_pair::<A>() == (3, A));
 }
 
 fn forward_shadowed_const<const A: u64>() {
@@ -285,6 +358,17 @@ fn main(a: [u64; 2]) {
     forward_const_generics_twice::<17, 19>();
     forward_type_with_const_length::<3>(__to_str_array("ABC"));
     forward_to_concrete_receiver::<3>();
+    forward_to_generic_array::<3>([1, 2, 3]);
+    forward_to_generic_array::<2>([1, 2]);
+    forward_to_concrete_array::<3>();
+    forward_to_generic_string::<3>(__to_str_array("ABC"));
+    forward_to_generic_string::<5>(__to_str_array("ABCDE"));
+    forward_to_concrete_string::<7>();
+    forward_to_nested_array::<3, 2>([[1, 2, 3], [4, 5, 6]]);
+    forward_to_nested_array::<3, 1>([[7, 8, 9]]);
+    forward_to_array_reference::<3>(&[1, 2, 3]);
+    forward_to_array_reference::<3>(&[4, 5, 6]);
+    preserve_nested_receiver_consts::<7>();
     forward_shadowed_const::<3>();
     preserve_mixed_const_scopes::<7, 3>(__to_str_array("ABC"));
 }

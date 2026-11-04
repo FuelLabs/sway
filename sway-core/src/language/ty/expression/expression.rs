@@ -5,6 +5,7 @@ use crate::{
     has_changes,
     language::{ty::*, Literal},
     semantic_analysis::{
+        ast_node::expression::typed_expression::prepare_receiver_const_generics_materialization,
         TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckContext, TypeCheckFinalization,
         TypeCheckFinalizationContext,
     },
@@ -450,6 +451,7 @@ impl MaterializeConstGenerics for TyExpression {
                 arguments,
                 type_binding,
                 fn_ref,
+                method_target,
                 ..
             } => {
                 let mut has_changes = HasChanges::No;
@@ -467,6 +469,8 @@ impl MaterializeConstGenerics for TyExpression {
                         {
                             // Arguments name const generics in the caller's scope. Translate
                             // them to callee parameters before materializing the declaration.
+                            // Inherited parameters belong to the receiver, not the turbofish.
+                            // Matching their names to the caller could overwrite concrete values.
                             for (parameter, argument) in fn_decl
                                 .type_parameters
                                 .iter()
@@ -490,6 +494,33 @@ impl MaterializeConstGenerics for TyExpression {
                                     const_generics
                                         .insert(parameter.name.as_str().to_string(), value.clone());
                                 }
+                            }
+
+                            // Infer inherited consts from the receiver binding separately.
+                            // This also handles associated functions without a self argument.
+                            if let (Some(mut target), Some(TyDecl::ImplSelfOrTrait(impl_decl))) =
+                                (*method_target, fn_decl.implementing_type.as_ref())
+                            {
+                                // Unification can change resolved nested types, so recover
+                                // parameter names from the impl's initial type pattern.
+                                let implementing_for = engines
+                                    .de()
+                                    .get(&impl_decl.decl_id)
+                                    .implementing_for
+                                    .initial_type_id;
+                                target.materialize_const_generics(engines, handler, name, value)?;
+                                let inherited = prepare_receiver_const_generics_materialization(
+                                    engines,
+                                    target,
+                                    implementing_for,
+                                    fn_decl.type_parameters.iter(),
+                                );
+                                const_generics.extend(inherited.into_iter().filter(|(name, _)| {
+                                    fn_decl.type_parameters.iter().any(|parameter| {
+                                        matches!(parameter, TypeParameter::Const(parameter)
+                                            if parameter.is_from_parent && parameter.name.as_str() == name)
+                                    })
+                                }));
                             }
                         }
                         _ => {
