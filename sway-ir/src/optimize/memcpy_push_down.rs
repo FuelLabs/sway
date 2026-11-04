@@ -659,12 +659,13 @@ fn assert_sites_under_candidate(
 
 /// Pruned `must_materialize_before_exit` must have no dominated pairs.
 fn assert_undominated_blocks(dom_tree: &DomTree, blocks: &FxHashSet<Block>) {
-    for &a in blocks {
-        for &b in blocks {
+    let blocks: Vec<Block> = blocks.iter().copied().collect();
+    for (i, &a) in blocks.iter().enumerate() {
+        for &b in &blocks[i + 1..] {
             assert!(
-                a == b || !dom_tree.dominates(a, b),
+                !dom_tree.dominates(a, b) && !dom_tree.dominates(b, a),
                 "must_materialize_before_exit must be undominated after prune \
-                 ({a:?} dominates {b:?})"
+                 ({a:?} and {b:?} are comparable)"
             );
         }
     }
