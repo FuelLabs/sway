@@ -821,6 +821,43 @@ pub(crate) fn type_check_method_application(
     Ok(exp)
 }
 
+/// Infer receiver consts at each corresponding array or reference layer.
+pub(crate) fn prepare_receiver_const_generics_materialization<'a>(
+    engines: &crate::Engines,
+    target: TypeId,
+    implementing_for: TypeId,
+    type_parameters: impl Iterator<Item = &'a TypeParameter>,
+) -> BTreeMap<String, TyExpression> {
+    let mut pairs = vec![(target, implementing_for)];
+    let mut index = 0;
+    while let Some((target, implementing_for)) = pairs.get(index).copied() {
+        match (
+            engines.te().get(target).as_ref(),
+            engines.te().get(implementing_for).as_ref(),
+        ) {
+            (TypeInfo::Array(target, _), TypeInfo::Array(implementing_for, _))
+            | (
+                TypeInfo::Ref {
+                    referenced_type: target,
+                    ..
+                },
+                TypeInfo::Ref {
+                    referenced_type: implementing_for,
+                    ..
+                },
+            ) => pairs.push((target.type_id, implementing_for.type_id)),
+            _ => {}
+        }
+        index += 1;
+    }
+    prepare_const_generics_materialization(
+        engines,
+        pairs.iter().map(|(target, _)| Some(*target)),
+        pairs.iter().map(|(_, implementing_for)| *implementing_for),
+        type_parameters,
+    )
+}
+
 pub(crate) fn prepare_const_generics_materialization<'a>(
     engines: &crate::Engines,
     args_types: impl Iterator<Item = Option<TypeId>>,

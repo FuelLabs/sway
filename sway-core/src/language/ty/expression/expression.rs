@@ -1,9 +1,11 @@
 use crate::{
+    ast_elements::type_parameter::{ConstGenericExpr, ConstGenericExprTyDecl},
     decl_engine::*,
     engine_threading::*,
     has_changes,
     language::{ty::*, Literal},
     semantic_analysis::{
+        ast_node::expression::typed_expression::prepare_receiver_const_generics_materialization,
         TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckContext, TypeCheckFinalization,
         TypeCheckFinalizationContext,
     },
@@ -13,7 +15,7 @@ use crate::{
     HasChanges,
 };
 use serde::{Deserialize, Serialize};
-use std::{fmt, hash::Hasher};
+use std::{collections::BTreeMap, fmt, hash::Hasher};
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
@@ -449,6 +451,7 @@ impl MaterializeConstGenerics for TyExpression {
                 arguments,
                 type_binding,
                 fn_ref,
+                method_target,
                 ..
             } => {
                 let mut has_changes = HasChanges::No;
@@ -456,12 +459,81 @@ impl MaterializeConstGenerics for TyExpression {
                 // Materialize a non-dummy function.
                 let fn_decl = engines.de().get(fn_ref.id());
                 if !fn_decl.is_trait_method_dummy {
-                    let mut type_subst_map = TypeSubstMap::new();
-                    type_subst_map
-                        .const_generics_materialization
-                        .insert(name.to_string(), value.clone());
+                    let mut const_generics = BTreeMap::new();
+                    match type_binding.as_ref().map(|binding| &binding.type_arguments) {
+                        Some(TypeArgs::Regular(args))
+                            if !args.is_empty()
+                                && fn_decl.type_parameters.iter().all(|parameter| {
+                                    matches!(parameter, TypeParameter::Const(_))
+                                }) =>
+                        {
+                            // Arguments name const generics in the caller's scope. Translate
+                            // them to callee parameters before materializing the declaration.
+                            // Inherited parameters belong to the receiver, not the turbofish.
+                            // Matching their names to the caller could overwrite concrete values.
+                            for (parameter, argument) in fn_decl
+                                .type_parameters
+                                .iter()
+                                .filter(|parameter| !parameter.is_from_parent())
+                                .zip(args)
+                            {
+                                let TypeParameter::Const(parameter) = parameter else {
+                                    continue;
+                                };
+                                let argument_name = match argument {
+                                    GenericArgument::Const(argument) => match &argument.expr {
+                                        ConstGenericExpr::AmbiguousVariableExpression {
+                                            ident,
+                                            decl: Some(ConstGenericExprTyDecl::ConstGenericDecl(_)),
+                                        } => Some(ident),
+                                        _ => None,
+                                    },
+                                    GenericArgument::Type(_) => None,
+                                };
+                                if argument_name.is_some_and(|argument| argument.as_str() == name) {
+                                    const_generics
+                                        .insert(parameter.name.as_str().to_string(), value.clone());
+                                }
+                            }
+
+                            // Infer inherited consts from the receiver binding separately.
+                            // This also handles associated functions without a self argument.
+                            if let (Some(mut target), Some(TyDecl::ImplSelfOrTrait(impl_decl))) =
+                                (*method_target, fn_decl.implementing_type.as_ref())
+                            {
+                                // Unification can change resolved nested types, so recover
+                                // parameter names from the impl's initial type pattern.
+                                let implementing_for = engines
+                                    .de()
+                                    .get(&impl_decl.decl_id)
+                                    .implementing_for
+                                    .initial_type_id;
+                                target.materialize_const_generics(engines, handler, name, value)?;
+                                let inherited = prepare_receiver_const_generics_materialization(
+                                    engines,
+                                    target,
+                                    implementing_for,
+                                    fn_decl.type_parameters.iter(),
+                                );
+                                const_generics.extend(inherited.into_iter().filter(|(name, _)| {
+                                    fn_decl.type_parameters.iter().any(|parameter| {
+                                        matches!(parameter, TypeParameter::Const(parameter)
+                                            if parameter.is_from_parent && parameter.name.as_str() == name)
+                                    })
+                                }));
+                            }
+                        }
+                        _ => {
+                            // Mixed callees can contain caller-owned const references in
+                            // specialized ordinary types. Preserve their existing propagation
+                            // until those references can be distinguished from callee parameters.
+                            const_generics.insert(name.to_string(), value.clone());
+                        }
+                    }
 
                     let mut new_decl = TyFunctionDecl::clone(&*fn_decl);
+                    let mut type_subst_map = TypeSubstMap::new();
+                    type_subst_map.const_generics_materialization = const_generics;
                     if new_decl
                         .subst_inner(&SubstTypesContext {
                             handler,
