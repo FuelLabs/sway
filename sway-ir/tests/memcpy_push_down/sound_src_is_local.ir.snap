@@ -1,0 +1,59 @@
+---
+source: sway-ir/tests/tests.rs
+---
+Modified: true
+
+script {
+    entry fn main(flag: bool, order: __ptr { u64, u64 }) -> u64 {
+        local mut { u64, u64 } order_copy
+        local mut { u64, u64 } src
+
+        entry(mut flag: bool, order: __ptr { u64, u64 }):
+        v4v1 = get_local __ptr { u64, u64 }, src
+        v5v1 = const u64 0
+        v6v1 = get_elem_ptr order, __ptr u64, v5v1
+        v7v1 = load v6v1
+        v8v1 = get_elem_ptr v4v1, __ptr u64, v5v1
+        store v7v1 to v8v1
+        v10v1 = const u64 1
+        v11v1 = get_elem_ptr order, __ptr u64, v10v1
+        v12v1 = load v11v1
+        v13v1 = get_elem_ptr v4v1, __ptr u64, v10v1
+        store v12v1 to v13v1
+        v15v1 = get_local __ptr { u64, u64 }, order_copy
+        v16v1 = get_local __ptr { u64, u64 }, src
+-         mem_copy_val v15v1, v16v1
+        cbr flag, block_write(), block_read()
+
+        block_write():
+        v19v1 = get_local __ptr { u64, u64 }, order_copy
+        v20v1 = const u64 1
+        v21v1 = get_elem_ptr v19v1, __ptr u64, v20v1
++         v36v1 = get_local __ptr { u64, u64 }, order_copy
++         v37v1 = get_local __ptr { u64, u64 }, src
++         mem_copy_val v36v1, v37v1
+        v22v1 = const u64 42
+        store v22v1 to v21v1
+        v24v1 = get_local __ptr { u64, u64 }, order_copy
+        v25v1 = call consume_read_only(v24v1)
+        br block_join(v25v1)
+
+        block_read():
+        v27v1 = get_local __ptr { u64, u64 }, order_copy
+-         v28v1 = call consume_read_only(v27v1)
++         v39v1 = get_local __ptr { u64, u64 }, src
++         v28v1 = call consume_read_only(v39v1)
+        br block_join(v28v1)
+
+        block_join(v3v1: u64):
+        ret u64 v3v1
+    }
+
+    fn consume_read_only(order: __ptr { u64, u64 }) -> u64 {
+        entry(order: __ptr { u64, u64 }):
+        v32v1 = const u64 0
+        v33v1 = get_elem_ptr order, __ptr u64, v32v1
+        v34v1 = load v33v1
+        ret u64 v34v1
+    }
+}

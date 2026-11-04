@@ -7,7 +7,7 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/match_expressions_all
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-assert)
    Compiling script match_expressions_all (test/src/e2e_vm_tests/test_programs/should_pass/language/match_expressions_all)
-    Finished debug [unoptimized + fuel] target(s) [2.784 KB] in ???
+    Finished debug [unoptimized + fuel] target(s) [2.6 KB] in ???
 
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/match_expressions_all --ir final --asm final --release | filter-fn match_expressions_all return_match_on_str_slice
 
@@ -18,73 +18,70 @@ fn return_match_on_str_slice_8(mut param: __ptr slice) -> u64 {
     local slice __anon_3
     local { ptr, u64 } __anon_4
     local slice __anon_5
-    local slice __matched_value_1
 
     entry(mut param: __ptr slice):
-    v263v1 = get_local __ptr slice, __matched_value_1
-    mem_copy_val v263v1, param
-    v265v1 = get_global __ptr string<5>, __const_global
-    v266v1 = cast_ptr v265v1 to ptr
-    v267v1 = get_local __ptr { ptr, u64 }, __anon_0
-    v268v1 = const u64 0
-    v269v1 = get_elem_ptr v267v1, __ptr ptr, v268v1
-    store v266v1 to v269v1
-    v271v1 = const u64 1
-    v272v1 = get_elem_ptr v267v1, __ptr u64, v271v1
-    v273v1 = const u64 5
-    store v273v1 to v272v1
-    v275v1 = get_local __ptr slice, __anon_1
-    mem_copy_bytes v275v1, v267v1, 16
-    v277v1 = call eq_9(param, v275v1)
-    v278v1 = const u64 1
-    cbr v277v1, block8(v278v1), block1()
+    v257v1 = get_global __ptr string<5>, __const_global
+    v258v1 = cast_ptr v257v1 to ptr
+    v259v1 = get_local __ptr { ptr, u64 }, __anon_0
+    v260v1 = const u64 0
+    v261v1 = get_elem_ptr v259v1, __ptr ptr, v260v1
+    store v258v1 to v261v1
+    v263v1 = const u64 1
+    v264v1 = get_elem_ptr v259v1, __ptr u64, v263v1
+    v265v1 = const u64 5
+    store v265v1 to v264v1
+    v267v1 = get_local __ptr slice, __anon_1
+    mem_copy_bytes v267v1, v259v1, 16
+    v269v1 = call eq_9(param, v267v1)
+    v270v1 = const u64 1
+    cbr v269v1, block8(v270v1), block1()
 
     block1():
-    v280v1 = get_global __ptr string<7>, __const_global0
-    v281v1 = cast_ptr v280v1 to ptr
-    v282v1 = get_local __ptr { ptr, u64 }, __anon_2
-    v283v1 = const u64 0
-    v284v1 = get_elem_ptr v282v1, __ptr ptr, v283v1
-    store v281v1 to v284v1
-    v286v1 = const u64 1
-    v287v1 = get_elem_ptr v282v1, __ptr u64, v286v1
-    v288v1 = const u64 7
-    store v288v1 to v287v1
-    v290v1 = get_local __ptr slice, __anon_3
-    mem_copy_bytes v290v1, v282v1, 16
-    v292v1 = call eq_9(v263v1, v290v1)
-    v293v1 = const u64 2
-    cbr v292v1, block7(v293v1), block3()
+    v272v1 = get_global __ptr string<7>, __const_global0
+    v273v1 = cast_ptr v272v1 to ptr
+    v274v1 = get_local __ptr { ptr, u64 }, __anon_2
+    v275v1 = const u64 0
+    v276v1 = get_elem_ptr v274v1, __ptr ptr, v275v1
+    store v273v1 to v276v1
+    v278v1 = const u64 1
+    v279v1 = get_elem_ptr v274v1, __ptr u64, v278v1
+    v280v1 = const u64 7
+    store v280v1 to v279v1
+    v282v1 = get_local __ptr slice, __anon_3
+    mem_copy_bytes v282v1, v274v1, 16
+    v284v1 = call eq_9(param, v282v1)
+    v285v1 = const u64 2
+    cbr v284v1, block7(v285v1), block3()
 
     block3():
-    v295v1 = get_global __ptr string<5>, __const_global1
-    v296v1 = cast_ptr v295v1 to ptr
-    v297v1 = get_local __ptr { ptr, u64 }, __anon_4
-    v298v1 = const u64 0
-    v299v1 = get_elem_ptr v297v1, __ptr ptr, v298v1
-    store v296v1 to v299v1
-    v301v1 = const u64 1
-    v302v1 = get_elem_ptr v297v1, __ptr u64, v301v1
-    v303v1 = const u64 5
-    store v303v1 to v302v1
-    v305v1 = get_local __ptr slice, __anon_5
-    mem_copy_bytes v305v1, v297v1, 16
-    v307v1 = call eq_9(v263v1, v305v1)
-    v308v1 = const u64 3
-    cbr v307v1, block6(v308v1), block5()
+    v287v1 = get_global __ptr string<5>, __const_global1
+    v288v1 = cast_ptr v287v1 to ptr
+    v289v1 = get_local __ptr { ptr, u64 }, __anon_4
+    v290v1 = const u64 0
+    v291v1 = get_elem_ptr v289v1, __ptr ptr, v290v1
+    store v288v1 to v291v1
+    v293v1 = const u64 1
+    v294v1 = get_elem_ptr v289v1, __ptr u64, v293v1
+    v295v1 = const u64 5
+    store v295v1 to v294v1
+    v297v1 = get_local __ptr slice, __anon_5
+    mem_copy_bytes v297v1, v289v1, 16
+    v299v1 = call eq_9(param, v297v1)
+    v300v1 = const u64 3
+    cbr v299v1, block6(v300v1), block5()
 
     block5():
-    v310v1 = const u64 1000
-    br block6(v310v1)
+    v302v1 = const u64 1000
+    br block6(v302v1)
 
-    block6(mut v260v1: u64):
-    br block7(v260v1)
+    block6(mut v254v1: u64):
+    br block7(v254v1)
 
-    block7(mut v261v1: u64):
-    br block8(v261v1)
+    block7(mut v255v1: u64):
+    br block8(v255v1)
 
-    block8(mut v262v1: u64):
-    ret u64 v262v1
+    block8(mut v256v1: u64):
+    ret u64 v256v1
 }
 
 
@@ -94,49 +91,47 @@ fn return_match_on_str_slice_8(mut param: __ptr slice) -> u64 {
 
 pshh i531968                  ; [fn init: return_match_on_str_slice_8]: push used high registers 40..64
 move $$locbase $sp            ; [fn init: return_match_on_str_slice_8]: set locals base register
-cfei i112                     ; [fn init: return_match_on_str_slice_8]: allocate: locals 112 byte(s), call args 0 slot(s)
+cfei i96                      ; [fn init: return_match_on_str_slice_8]: allocate: locals 96 byte(s), call args 0 slot(s)
 move $r0 $$arg0               ; [fn init: return_match_on_str_slice_8]: copy argument 0 (param)
 move $r1 $$reta               ; [fn init: return_match_on_str_slice_8]: save return address
-addi $r2 $$locbase i96        ; get offset to local __ptr slice
-mcpi $r2 $$arg0 i16           ; copy memory
-addr $r3 data_NonConfigurable_7; get __const_global's address in data section
-sw   $$locbase $r3 i0         ; store word
-movi $r3 i5                   ; initialize constant into register
-sw   $$locbase $r3 i1         ; store word
-addi $r3 $$locbase i16        ; get offset to local __ptr slice
-mcpi $r3 $$locbase i16        ; copy memory
+addr $r2 data_NonConfigurable_7; get __const_global's address in data section
+sw   $$locbase $r2 i0         ; store word
+movi $r2 i5                   ; initialize constant into register
+sw   $$locbase $r2 i1         ; store word
+addi $r2 $$locbase i16        ; get offset to local __ptr slice
+mcpi $r2 $$locbase i16        ; copy memory
 move $$arg0 $r0               ; [call: eq_9]: pass argument 0
-move $$arg1 $r3               ; [call: eq_9]: pass argument 1
+move $$arg1 $r2               ; [call: eq_9]: pass argument 1
 jal  $$reta $pc i33           ; [call: eq_9]: call function
-movi $r0 i1                   ; move parameter from branch to block argument
+movi $r2 i1                   ; move parameter from branch to block argument
 jnzf $$retv $zero i25
-addr $r0 data_NonConfigurable_9; get __const_global0's address in data section
+addr $r2 data_NonConfigurable_9; get __const_global0's address in data section
 addi $r3 $$locbase i32        ; get offset to local __ptr { ptr, u64 }
-sw   $$locbase $r0 i4         ; store word
-movi $r0 i7                   ; initialize constant into register
-sw   $$locbase $r0 i5         ; store word
-addi $r0 $$locbase i48        ; get offset to local __ptr slice
-mcpi $r0 $r3 i16              ; copy memory
-move $$arg0 $r2               ; [call: eq_9]: pass argument 0
-move $$arg1 $r0               ; [call: eq_9]: pass argument 1
+sw   $$locbase $r2 i4         ; store word
+movi $r2 i7                   ; initialize constant into register
+sw   $$locbase $r2 i5         ; store word
+addi $r2 $$locbase i48        ; get offset to local __ptr slice
+mcpi $r2 $r3 i16              ; copy memory
+move $$arg0 $r0               ; [call: eq_9]: pass argument 0
+move $$arg1 $r2               ; [call: eq_9]: pass argument 1
 jal  $$reta $pc i21           ; [call: eq_9]: call function
-movi $r0 i2                   ; move parameter from branch to block argument
+movi $r2 i2                   ; move parameter from branch to block argument
 jnzf $$retv $zero i13
-addr $r0 data_NonConfigurable_10; get __const_global1's address in data section
+addr $r2 data_NonConfigurable_10; get __const_global1's address in data section
 addi $r3 $$locbase i64        ; get offset to local __ptr { ptr, u64 }
-sw   $$locbase $r0 i8         ; store word
-movi $r0 i5                   ; initialize constant into register
-sw   $$locbase $r0 i9         ; store word
-addi $r0 $$locbase i80        ; get offset to local __ptr slice
-mcpi $r0 $r3 i16              ; copy memory
-move $$arg0 $r2               ; [call: eq_9]: pass argument 0
-move $$arg1 $r0               ; [call: eq_9]: pass argument 1
+sw   $$locbase $r2 i8         ; store word
+movi $r2 i5                   ; initialize constant into register
+sw   $$locbase $r2 i9         ; store word
+addi $r2 $$locbase i80        ; get offset to local __ptr slice
+mcpi $r2 $r3 i16              ; copy memory
+move $$arg0 $r0               ; [call: eq_9]: pass argument 0
+move $$arg1 $r2               ; [call: eq_9]: pass argument 1
 jal  $$reta $pc i9            ; [call: eq_9]: call function
-movi $r0 i3                   ; move parameter from branch to block argument
+movi $r2 i3                   ; move parameter from branch to block argument
 jnzf $$retv $zero i1
-movi $r0 i1000                ; move parameter from branch to block argument
-move $$retv $r0               ; [fn end: return_match_on_str_slice_8] set return value
-cfsi i112                     ; [fn end: return_match_on_str_slice_8] free: locals 112 byte(s), call args 0 slot(s)
+movi $r2 i1000                ; move parameter from branch to block argument
+move $$retv $r2               ; [fn end: return_match_on_str_slice_8] set return value
+cfsi i96                      ; [fn end: return_match_on_str_slice_8] free: locals 96 byte(s), call args 0 slot(s)
 move $$reta $r1               ; [fn end: return_match_on_str_slice_8] restore return address
 poph i531968                  ; [fn end: return_match_on_str_slice_8]: restore used high registers 40..64
 jal  $zero $$reta i0          ; [fn end: return_match_on_str_slice_8] return from call

@@ -1,0 +1,64 @@
+// SOUNDNESS: live join of Pending (rebinding copy on one arm) and NoCopy
+// (other arm keeps the entry initialization). The pending edge must
+// materialize so the join read always sees a private `order_copy`.
+//
+// ```sway
+// fn main(flag: bool, order: Order, other: Order) -> u64 {
+//     let mut order_copy = other; // defined on every path
+//     if flag {
+//         order_copy = order;     // pending rebinding
+//         let _ = consume_read_only(order_copy);
+//     }
+//     consume_read_only(order_copy)
+// }
+// ```
+//
+// Expected:
+//   A = entry init of `order_copy` from `other` stays (not the candidate),
+//   B = rebinding copy on `with_copy` disappears,
+//   C = mid-arm read delegates to `order`,
+//   D = a copy from `order` materializes on the pending edge into the join,
+//   E = join consumes `order_copy` (Materialized after reconcile).
+script {
+    entry fn main(flag: bool, order: __ptr { u64, u64 }, other: __ptr { u64, u64 }) -> u64 {
+        local mut { u64, u64 } order_copy
+
+        entry(flag: bool, order: __ptr { u64, u64 }, other: __ptr { u64, u64 }):
+        // Well-defined value on the NoCopy arm (field stores, not a candidate).
+        v0 = get_local __ptr { u64, u64 }, order_copy
+        v1 = const u64 0
+        v2 = get_elem_ptr other, __ptr u64, v1
+        v3 = load v2
+        v4 = get_elem_ptr v0, __ptr u64, v1
+        store v3 to v4
+        v5 = const u64 1
+        v6 = get_elem_ptr other, __ptr u64, v5
+        v7 = load v6
+        v8 = get_elem_ptr v0, __ptr u64, v5
+        store v7 to v8 // <------------------ A
+        cbr flag, with_copy(), no_copy()
+
+        with_copy():
+        v9 = get_local __ptr { u64, u64 }, order_copy
+        mem_copy_val v9, order // <------------------ B (candidate)
+        v10 = get_local __ptr { u64, u64 }, order_copy
+        v11 = call consume_read_only(v10) // <------------------ C
+        br block_join() // <------------------ D
+
+        no_copy():
+        br block_join()
+
+        block_join():
+        v12 = get_local __ptr { u64, u64 }, order_copy
+        v13 = call consume_read_only(v12) // <------------------ E
+        ret u64 v13
+    }
+
+    fn consume_read_only(order: __ptr { u64, u64 }) -> u64 {
+        entry(order: __ptr { u64, u64 }):
+        v0 = const u64 0
+        v1 = get_elem_ptr order, __ptr u64, v0
+        v2 = load v1
+        ret u64 v2
+    }
+}

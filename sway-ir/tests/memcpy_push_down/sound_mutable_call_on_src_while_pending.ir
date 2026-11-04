@@ -1,0 +1,61 @@
+// SOUNDNESS: a mutable call on the *source* while pending is a write to src
+// and must force materialization before the call.
+//
+// ```sway
+// fn main(flag: bool, order: Order) -> u64 {
+//     let mut order_copy = order;
+//     if flag {
+//         poke_mut(order); // MayWrite SRC
+//         consume_read_only(order_copy)
+//     } else {
+//         consume_read_only(order_copy)
+//     }
+// }
+// ```
+//
+// Expected:
+//   A = entry copy disappears,
+//   B = a copy materializes in `block_poke` before `poke_mut`,
+//   C = `block_read` delegates to `order`.
+script {
+    entry fn main(flag: bool, order: __ptr { u64, u64 }) -> u64 {
+        local mut { u64, u64 } order_copy
+
+        entry(flag: bool, order: __ptr { u64, u64 }):
+        v0 = get_local __ptr { u64, u64 }, order_copy
+        mem_copy_val v0, order // <------------------ A
+        cbr flag, block_poke(), block_read()
+
+        block_poke():
+        v1 = call poke_mut(order) // <------------------ B
+        v2 = get_local __ptr { u64, u64 }, order_copy
+        v3 = call consume_read_only(v2)
+        br block_join(v3)
+
+        block_read():
+        v4 = get_local __ptr { u64, u64 }, order_copy
+        v5 = call consume_read_only(v4) // <------------------ C
+        br block_join(v5)
+
+        block_join(v6: u64):
+        ret u64 v6
+    }
+
+    fn poke_mut(order: __ptr { u64, u64 }) -> () {
+        entry(order: __ptr { u64, u64 }):
+        v0 = const u64 0
+        v1 = get_elem_ptr order, __ptr u64, v0
+        v2 = const u64 99
+        store v2 to v1
+        v3 = const unit ()
+        ret () v3
+    }
+
+    fn consume_read_only(order: __ptr { u64, u64 }) -> u64 {
+        entry(order: __ptr { u64, u64 }):
+        v0 = const u64 0
+        v1 = get_elem_ptr order, __ptr u64, v0
+        v2 = load v1
+        ret u64 v2
+    }
+}

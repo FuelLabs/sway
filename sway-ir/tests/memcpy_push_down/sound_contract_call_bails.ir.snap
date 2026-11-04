@@ -1,0 +1,41 @@
+---
+source: sway-ir/tests/tests.rs
+---
+Modified: false
+
+script {
+    entry fn main(flag: bool, params_src: __ptr { b256, u64, u64 }, asset: __ptr b256) -> u64 {
+        local mut { b256, u64, u64 } params_copy
+
+        entry(mut flag: bool, params_src: __ptr { b256, u64, u64 }, mut asset: __ptr b256):
+        v5v1 = get_local __ptr { b256, u64, u64 }, params_copy
+        mem_copy_val v5v1, params_src
+        v7v1 = get_local __ptr { b256, u64, u64 }, params_copy
+        v8v1 = const u64 0
+        v9v1 = const u64 100
+        v10v1 = contract_call u64 poke v7v1, v8v1, asset, v9v1
+        cbr flag, block_write(), block_read()
+
+        block_write():
+        v12v1 = get_local __ptr { b256, u64, u64 }, params_copy
+        v13v1 = const u64 1
+        v14v1 = get_elem_ptr v12v1, __ptr u64, v13v1
+        v15v1 = const u64 42
+        store v15v1 to v14v1
+        v17v1 = get_local __ptr { b256, u64, u64 }, params_copy
+        v18v1 = const u64 1
+        v19v1 = get_elem_ptr v17v1, __ptr u64, v18v1
+        v20v1 = load v19v1
+        br block_join(v20v1)
+
+        block_read():
+        v22v1 = get_local __ptr { b256, u64, u64 }, params_copy
+        v23v1 = const u64 1
+        v24v1 = get_elem_ptr v22v1, __ptr u64, v23v1
+        v25v1 = load v24v1
+        br block_join(v25v1)
+
+        block_join(v4v1: u64):
+        ret u64 v4v1
+    }
+}

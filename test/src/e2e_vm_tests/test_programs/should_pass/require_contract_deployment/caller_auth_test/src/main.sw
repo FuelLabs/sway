@@ -5,7 +5,7 @@ use auth_testing_abi::AuthTesting;
 #[cfg(experimental_new_encoding = false)]
 const CONTRACT_ID = 0xc2eec20491b53aab7232cbd27c31d15417b4e9daf0b89c74cc242ef1295f681f;
 #[cfg(experimental_new_encoding = true)]
-const CONTRACT_ID = 0x926f4b9d975e14eeb13ea2d1873a3e049f6c2c4fba8ebf8e2f1d287160e8699d; // AUTO-CONTRACT-ID ../../test_contracts/auth_testing_contract --release
+const CONTRACT_ID = 0x76457824f94c845ab19c78bfcd1fdee37051d6a58dae80e2e2e38d7f6be70ed9; // AUTO-CONTRACT-ID ../../test_contracts/auth_testing_contract --release
 
 // should be false in the case of a script
 fn main() -> bool {

@@ -1,0 +1,16 @@
+---
+source: sway-ir/tests/tests.rs
+---
+Modified: false
+
+script {
+    entry fn main(order: __ptr { u64, u64 }) -> __ptr { u64, u64 } {
+        local mut { u64, u64 } order_copy
+
+        entry(order: __ptr { u64, u64 }):
+        v2v1 = get_local __ptr { u64, u64 }, order_copy
+        mem_copy_val v2v1, order
+        v4v1 = get_local __ptr { u64, u64 }, order_copy
+        ret __ptr { u64, u64 } v4v1
+    }
+}

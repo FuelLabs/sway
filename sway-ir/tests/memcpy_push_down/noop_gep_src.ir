@@ -1,0 +1,36 @@
+// FILTER: source must be a whole local or entry arg — a GEP source is not a
+// candidate. (A true type-mismatched `mem_copy_val` is rejected by IR verify
+// before the pass runs, so this covers the same `find_candidates` continue.)
+//
+//
+// ```sway
+// script;
+//
+// struct Pair {
+//     a: u64,
+//     b: u64,
+// }
+//
+// fn main(order: Pair) -> u64 {
+//     // Conceptual: copy only field `a` (IR: mem_copy_val into a u64 local
+//     // from a GEP of `order`). Not a whole-local / entry-arg candidate.
+//     let mut field_copy = order.a;
+//     field_copy
+// }
+// ```
+//
+// Expected: Modified: false.
+script {
+    entry fn main(order: __ptr { u64, u64 }) -> u64 {
+        local mut u64 field_copy
+
+        entry(order: __ptr { u64, u64 }):
+        v0 = get_local __ptr u64, field_copy
+        v1 = const u64 0
+        v2 = get_elem_ptr order, __ptr u64, v1
+        mem_copy_val v0, v2 // src is GEP, not Local/entry Arg
+        v3 = get_local __ptr u64, field_copy
+        v4 = load v3
+        ret u64 v4
+    }
+}
