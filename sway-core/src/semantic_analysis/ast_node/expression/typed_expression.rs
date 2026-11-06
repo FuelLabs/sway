@@ -32,7 +32,7 @@ use crate::{
     semantic_analysis::{expression::ReachableReport, *},
     transform::to_parsed_lang::type_name_to_type_info_opt,
     type_system::*,
-    Engines,
+    Engines, SpeculationHandler,
 };
 
 use ast_elements::{type_argument::GenericTypeArgument, type_parameter::ConstGenericExpr};
@@ -2118,15 +2118,26 @@ impl ty::TyExpression {
                     .with_type_annotation(type_engine.insert(engines, initial_type.clone(), None));
 
                 // type_check_analyze unification will give the final error
-                let type_check_handler = Handler::default();
-                let result = Self::type_check(&type_check_handler, ctx, expr)
-                    .unwrap_or_else(|err| ty::TyExpression::error(err, span, engines));
-
-                if let TypeInfo::ErrorRecovery(_) = &*engines.te().get(result.return_type) {
-                    handler.append(type_check_handler);
-                }
-
-                result
+                handler.discard_if(
+                    engines,
+                    |type_check_handler| {
+                        Self::type_check(type_check_handler, ctx, expr)
+                            .unwrap_or_else(|err| ty::TyExpression::error(err, span, engines))
+                    },
+                    // TODO: The errors are deliberately dropped here, although only the
+                    //       unification errors will be re-reported by the later unification
+                    //       analysis. E.g., errors in item declarations inside of the
+                    //       element's block expression get lost, and the invalid program
+                    //       compiles: https://github.com/FuelLabs/sway/issues/7759
+                    //       Once that issue is fixed, adjust the condition to not to
+                    //       discard the dropped errors.
+                    |_, result| {
+                        !matches!(
+                            &*engines.te().get(result.return_type),
+                            TypeInfo::ErrorRecovery(_)
+                        )
+                    },
+                )
             })
             .collect();
 

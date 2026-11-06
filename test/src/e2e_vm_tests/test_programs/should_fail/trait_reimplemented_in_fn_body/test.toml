@@ -1,0 +1,4 @@
+category = "fail"
+
+#check: $()Trait is already implemented for type
+#check: $()Trait "trait_reimplemented_in_fn_body::T" is already implemented for type "trait_reimplemented_in_fn_body::S".

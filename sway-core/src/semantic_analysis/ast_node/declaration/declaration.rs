@@ -191,10 +191,7 @@ impl TyDecl {
                     &reserved_trait_decl,
                 ) {
                     Ok(res) => res,
-                    Err(err) => {
-                        decl_engine.abandon(reserved_trait_decl);
-                        return Ok(ty::TyDecl::ErrorRecovery(trait_decl.span.clone(), err));
-                    }
+                    Err(err) => return Ok(ty::TyDecl::ErrorRecovery(trait_decl.span.clone(), err)),
                 };
                 let name = trait_decl.name.clone();
 
@@ -286,7 +283,6 @@ impl TyDecl {
                 ) {
                     Ok(res) => res,
                     Err(err) => {
-                        decl_engine.abandon(reserved_impl_trait_decl_id);
                         return Ok(ty::TyDecl::ErrorRecovery(
                             impl_self_or_trait.block_span.clone(),
                             err,
@@ -397,7 +393,6 @@ impl TyDecl {
                 ) {
                     Ok(res) => res,
                     Err(err) => {
-                        decl_engine.abandon(reserved_abi_decl_id);
                         return Ok(ty::TyDecl::ErrorRecovery(abi_decl.span.clone(), err));
                     }
                 };

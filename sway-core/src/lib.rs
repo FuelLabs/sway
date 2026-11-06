@@ -24,6 +24,7 @@ pub mod obs_engine;
 pub mod query_engine;
 pub mod semantic_analysis;
 pub mod source_map;
+pub mod speculation_handler;
 pub mod transform;
 pub mod type_system;
 
@@ -95,6 +96,7 @@ pub mod fuel_prelude {
 
 pub use engine_threading::Engines;
 pub use obs_engine::{ObservabilityEngine, Observer};
+pub use speculation_handler::SpeculationHandler;
 
 /// Given an input `Arc<str>` and an optional [BuildConfig], parse the input into a [lexed::LexedProgram] and [parsed::ParseProgram].
 ///
@@ -943,7 +945,9 @@ pub fn parsed_to_ast(
     // slot must be filled and frozen. An open slot at this point means that an
     // unfinished declaration has leaked out of the type checking, and is a bug in
     // the compiler. Note that in the case of a failed type checking (`handler.has_errors`),
-    // open slots are possible and valid.
+    // open slots are possible and valid. Also note that the speculative type checking,
+    // e.g., trait auto-impls, forgets the slots left open by its failures
+    // (whose errors are deliberately swallowed), and thus never leaves open slots behind.
     if !handler.has_errors() && engines.de().has_open_decl_slots() {
         let error = handler.emit_err(CompileError::Internal(
             "Decl slots are left open after a successfully finished type checking.",
@@ -981,7 +985,7 @@ pub fn parsed_to_ast(
     let module = Module::new(&mut ctx, Kind::Contract);
     let mut md_mgr = MetadataManager::default();
 
-    // run decl checks
+    // Run decl checks.
     let checks = run_decl_checks(
         handler,
         &typed_program,
