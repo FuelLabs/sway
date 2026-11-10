@@ -80,6 +80,69 @@ pub struct DeclEngine {
     ///   e.g., a monomorphized version of a generic declaration, is derived from
     ///   the original declaration.
     parents: RwLock<HashMap<FunctionalDeclId, Vec<FunctionalDeclId>>>,
+
+    /// The currently open slots: decl slots reserved via [DeclEngineReserve::reserve]
+    /// and not yet frozen via [DeclEngineReserve::freeze]. In other words, the decls
+    /// that are currently in their construction phase.
+    ///
+    /// For each open slot, the [SourceId] of the corresponding parsed declaration
+    /// is stored, captured at the reservation time. A reserved and never filled
+    /// slot has no content, and thus no span. The stored [SourceId] is the only
+    /// way to attribute such a slot to a module or program, which is needed for
+    /// reclaiming abandoned open slots in [DeclEngine::clear_module] and
+    /// [DeclEngine::clear_program]. Open slots get abandoned if a compilation
+    /// is canceled during the type checking, e.g., when the LSP server
+    /// retriggers a compilation on a code change.
+    ///
+    /// The open slots sets exist only for the decl types that implement
+    /// [DeclEngineReserve]. Note that the sets do not provide, nor undermine, the
+    /// mutation guarantees of the reserve-fill-freeze protocol. Those are given
+    /// at compile time by the [ReservedDeclId] tokens. The sets are a bookkeeping
+    /// mechanism used for the abandoned slots reclamation during [DeclEngine::clear_module]
+    /// or [DeclEngine::clear_program].
+    function_open_slots: RwLock<HashMap<DeclId<TyFunctionDecl>, Option<SourceId>>>,
+    impl_self_or_trait_open_slots: RwLock<HashMap<DeclId<TyImplSelfOrTrait>, Option<SourceId>>>,
+    trait_open_slots: RwLock<HashMap<DeclId<TyTraitDecl>, Option<SourceId>>>,
+    abi_open_slots: RwLock<HashMap<DeclId<TyAbiDecl>, Option<SourceId>>>,
+
+    /// The forgotten slots: decl slots whose construction was deliberately given
+    /// up by forgetting them via [DeclEngine::forget_open_slots_since].
+    ///
+    /// Slots get forgotten when a speculative type checking fails and its errors
+    /// are deliberately swallowed. E.g., the auto-implementations of traits like
+    /// `AbiEncode` or `Debug` are generated speculatively for every struct and
+    /// enum, and a failure to type check a generated implementation only means
+    /// that the type does not get that implementation. Such a failed type checking
+    /// drops the [ReservedDeclId] tokens of the declarations it has reserved, and
+    /// its open slots would otherwise remain open forever, because no error
+    /// reaches the compilation's error handler.
+    ///
+    /// Same as for the open slots, the stored [SourceId] of the corresponding
+    /// parsed declaration is the only way to attribute a never filled slot to
+    /// a module or program. The forgotten slots are reclaimed, together with the
+    /// abandoned open slots, during [DeclEngine::clear_module] or
+    /// [DeclEngine::clear_program]. Until then, they stay allocated, which
+    /// guarantees that their [DeclId]s are never reused. Any references to
+    /// them, e.g., in the `implementing_type`s of the function declarations
+    /// created during the failed speculative type checking, can never point to
+    /// an unrelated declaration.
+    function_forgotten_slots: RwLock<HashMap<DeclId<TyFunctionDecl>, Option<SourceId>>>,
+    impl_self_or_trait_forgotten_slots:
+        RwLock<HashMap<DeclId<TyImplSelfOrTrait>, Option<SourceId>>>,
+    trait_forgotten_slots: RwLock<HashMap<DeclId<TyTraitDecl>, Option<SourceId>>>,
+    abi_forgotten_slots: RwLock<HashMap<DeclId<TyAbiDecl>, Option<SourceId>>>,
+}
+
+/// A snapshot of the [DeclId]s of the decl slots that were open at the moment
+/// of calling [DeclEngine::mark_open_slots]. The sole purpose of the mark is
+/// to scope a speculative type checking, so that the open slots it leaves
+/// behind can be forgotten via [DeclEngine::forget_open_slots_since].
+#[derive(Default)]
+pub(crate) struct OpenDeclSlotsMark {
+    functions: HashSet<DeclId<TyFunctionDecl>>,
+    impls: HashSet<DeclId<TyImplSelfOrTrait>>,
+    traits: HashSet<DeclId<TyTraitDecl>>,
+    abis: HashSet<DeclId<TyAbiDecl>>,
 }
 
 impl Clone for DeclEngine {
@@ -128,6 +191,18 @@ impl Clone for DeclEngine {
                 self.type_alias_parsed_decl_id_map.read().clone(),
             ),
             parents: RwLock::new(self.parents.read().clone()),
+            function_open_slots: RwLock::new(self.function_open_slots.read().clone()),
+            impl_self_or_trait_open_slots: RwLock::new(
+                self.impl_self_or_trait_open_slots.read().clone(),
+            ),
+            trait_open_slots: RwLock::new(self.trait_open_slots.read().clone()),
+            abi_open_slots: RwLock::new(self.abi_open_slots.read().clone()),
+            function_forgotten_slots: RwLock::new(self.function_forgotten_slots.read().clone()),
+            impl_self_or_trait_forgotten_slots: RwLock::new(
+                self.impl_self_or_trait_forgotten_slots.read().clone(),
+            ),
+            trait_forgotten_slots: RwLock::new(self.trait_forgotten_slots.read().clone()),
+            abi_forgotten_slots: RwLock::new(self.abi_forgotten_slots.read().clone()),
         }
     }
 }
@@ -182,11 +257,70 @@ where
     fn insert_modified(&self, modified_decl: T, original_decl: DeclId<T>) -> DeclRef<DeclId<T>>;
 }
 
-pub trait DeclEngineReplace<T> {
-    fn replace(&self, index: DeclId<T>, decl: T);
+/// The **reserve-fill-freeze protocol** for inserting declarations whose construction
+/// is inherently circular or multi-staged. E.g., impl blocks and their items, which
+/// point at each other, or functions, whose bodies are type checked in multiple passes.
+///
+/// The protocol:
+/// 1. [Self::reserve] allocates an empty decl slot and returns the [ReservedDeclId]
+///    token. The [DeclId] of the slot is available via
+///    [ReservedDeclId::id] and can immediately be embedded into other declarations.
+///    Reading the declaration behind it panics (ICEs) until the first [Self::fill].
+/// 2. [Self::fill] writes the declaration content into the slot. It can be called
+///    multiple times, e.g., once per type checking pass, always under the same
+///    [DeclId]. **The declaration is readable between the fills**.
+/// 3. [Self::freeze] consumes the token and thereby ends the construction phase.
+///    Since the token is neither [Clone] nor [Copy], after the freeze the
+///    declaration is guaranteed, at compile time, to be immutable.
+///
+/// If the construction fails, e.g., because the type checking of the declaration
+/// returns an error, the token is simply dropped and the slot remains open:
+/// - In a regular compilation, the error fails the compilation, in which case
+///   the open slots are irrelevant.
+/// - In a speculative type checking whose errors are deliberately swallowed,
+///   e.g., in the trait auto-implementations, the speculation boundary forgets
+///   the slots it has left open. Speculations always run within the
+///   [SpeculationHandler][crate::SpeculationHandler] API, which establishes
+///   that boundary.
+///
+/// In both cases, the abandoned open slots are reclaimed during
+/// [DeclEngine::clear_module] or [DeclEngine::clear_program].
+///
+/// This trait is implemented only for the declaration types that actually
+/// need the reservation, and is the only way of modifying a
+/// declaration contained in the [DeclEngine].
+pub trait DeclEngineReserve<T>
+where
+    T: Named + Spanned + TyDeclParsedType,
+{
+    /// Reserves an empty decl slot and returns the token for filling
+    /// and freezing it.
+    ///
+    /// The `parsed_decl_id` of the corresponding parsed declaration is registered
+    /// immediately, same as in [DeclEngineInsert::insert]. The span of the parsed
+    /// declaration attributes the reserved slot to a module, so that abandoned
+    /// slots can be reclaimed in [DeclEngine::clear_module] and
+    /// [DeclEngine::clear_program]. (A reserved and never filled slot has no
+    /// content, and thus no span of its own.)
+    fn reserve(
+        &self,
+        engines: &Engines,
+        parsed_decl_id: ParsedDeclId<T::ParsedType>,
+    ) -> ReservedDeclId<T>;
+
+    /// Fills the reserved slot with the `decl` content. Can be called multiple
+    /// times; every fill completely replaces the previous content, always under
+    /// the same [DeclId].
+    fn fill(&self, reserved: &ReservedDeclId<T>, decl: T);
+
+    /// Ends the construction phase of the declaration in the reserved slot by
+    /// consuming the token, and returns the [DeclRef] of the now immutable declaration.
+    ///
+    /// Panics if the slot was never filled.
+    fn freeze(&self, reserved: ReservedDeclId<T>) -> DeclRef<DeclId<T>>;
 }
 
-pub trait DeclEngineIndex<T>: DeclEngineGet<DeclId<T>, T> + DeclEngineReplace<T>
+pub trait DeclEngineIndex<T>: DeclEngineGet<DeclId<T>, T>
 where
     T: Named + Spanned,
 {
@@ -488,27 +622,69 @@ decl_engine_parsed_decl!(
     Declaration::TypeAliasDeclaration
 );
 
-macro_rules! decl_engine_replace {
-    ($slab:ident, $decl:ty) => {
-        impl DeclEngineReplace<$decl> for DeclEngine {
-            fn replace(&self, index: DeclId<$decl>, decl: $decl) {
-                self.$slab.replace(index.inner(), decl);
+macro_rules! decl_engine_reserve {
+    ($slab:ident, $parsed_slab:ident, $open_slots:ident, $decl:ty) => {
+        impl DeclEngineReserve<$decl> for DeclEngine {
+            fn reserve(
+                &self,
+                engines: &Engines,
+                parsed_decl_id: ParsedDeclId<<$decl as TyDeclParsedType>::ParsedType>,
+            ) -> ReservedDeclId<$decl> {
+                let source_id = engines
+                    .pe()
+                    .get(&parsed_decl_id)
+                    .span()
+                    .source_id()
+                    .copied();
+                let decl_id = DeclId::new(self.$slab.reserve());
+                self.$parsed_slab.write().insert(decl_id, parsed_decl_id);
+                self.$open_slots.write().insert(decl_id, source_id);
+                ReservedDeclId::new(decl_id)
+            }
+
+            fn fill(&self, reserved: &ReservedDeclId<$decl>, decl: $decl) {
+                self.$slab.fill(reserved.id().inner(), decl);
+            }
+
+            fn freeze(&self, reserved: ReservedDeclId<$decl>) -> DeclRef<DeclId<$decl>> {
+                let decl_id = reserved.id();
+                assert!(
+                    self.$slab.is_filled(decl_id.inner()),
+                    "a reserved decl slot must be filled before it is frozen"
+                );
+                self.$open_slots.write().remove(&decl_id);
+                let (name, span) = self
+                    .$slab
+                    .map(decl_id.inner(), |decl| (decl.name().clone(), decl.span()));
+                DeclRef::new(name, decl_id, span)
             }
         }
     };
 }
-decl_engine_replace!(function_slab, ty::TyFunctionDecl);
-decl_engine_replace!(trait_slab, ty::TyTraitDecl);
-decl_engine_replace!(trait_fn_slab, ty::TyTraitFn);
-decl_engine_replace!(trait_type_slab, ty::TyTraitType);
-decl_engine_replace!(impl_self_or_trait_slab, ty::TyImplSelfOrTrait);
-decl_engine_replace!(struct_slab, ty::TyStructDecl);
-decl_engine_replace!(storage_slab, ty::TyStorageDecl);
-decl_engine_replace!(abi_slab, ty::TyAbiDecl);
-decl_engine_replace!(constant_slab, ty::TyConstantDecl);
-decl_engine_replace!(configurable_slab, ty::TyConfigurableDecl);
-decl_engine_replace!(enum_slab, ty::TyEnumDecl);
-decl_engine_replace!(type_alias_slab, ty::TyTypeAliasDecl);
+decl_engine_reserve!(
+    function_slab,
+    function_parsed_decl_id_map,
+    function_open_slots,
+    ty::TyFunctionDecl
+);
+decl_engine_reserve!(
+    impl_self_or_trait_slab,
+    impl_self_or_trait_parsed_decl_id_map,
+    impl_self_or_trait_open_slots,
+    ty::TyImplSelfOrTrait
+);
+decl_engine_reserve!(
+    trait_slab,
+    trait_parsed_decl_id_map,
+    trait_open_slots,
+    ty::TyTraitDecl
+);
+decl_engine_reserve!(
+    abi_slab,
+    abi_parsed_decl_id_map,
+    abi_open_slots,
+    ty::TyAbiDecl
+);
 
 macro_rules! decl_engine_index {
     ($slab:ident, $decl:ty) => {
@@ -532,6 +708,10 @@ macro_rules! decl_engine_clear_program {
     ($($slab:ident, $decl:ty);* $(;)?) => {
         impl DeclEngine {
             pub fn clear_program(&mut self, program_id: &ProgramId) {
+                self.reclaim_abandoned_open_and_forgotten_slots(&|source_id: &SourceId| {
+                    &source_id.program_id() == program_id
+                });
+
                 self.parents.write().retain(|key, _| {
                     match key {
                         FunctionalDeclId::TraitFn(decl_id) => {
@@ -573,6 +753,8 @@ macro_rules! decl_engine_clear_module {
     ($($slab:ident, $decl:ty);* $(;)?) => {
         impl DeclEngine {
             pub fn clear_module(&mut self, source_id: &SourceId) {
+                self.reclaim_abandoned_open_and_forgotten_slots(&|id: &SourceId| id == source_id);
+
                 self.parents.write().retain(|key, _| {
                     match key {
                         FunctionalDeclId::TraitFn(decl_id) => {
@@ -611,6 +793,172 @@ decl_engine_clear_module!(
 );
 
 impl DeclEngine {
+    /// Returns true if there are decl slots that are currently in their
+    /// construction phase (reserved and not yet frozen).
+    ///
+    /// After a successfully finished type checking of a package, there must
+    /// be no open decl slots. Every reservation must be frozen. Open slots
+    /// can outlive a package type checking only if the package compilation
+    /// fails or is canceled, e.g., when the LSP server re-triggers a compilation on
+    /// a code change. Such abandoned slots are forgotten at the beginning
+    /// of the next package type check on the same engines (see
+    /// [DeclEngine::forget_abandoned_open_slots]), and are reclaimed in
+    /// [DeclEngine::clear_module] and [DeclEngine::clear_program].
+    ///
+    /// Note that the forgotten slots are not open slots. A failed speculative
+    /// type checking whose errors are deliberately swallowed forgets the slots
+    /// it has left open (see [SpeculationHandler][crate::SpeculationHandler]),
+    /// and does not violate the above invariant.
+    ///
+    /// This is the [DeclEngine]'s part of the engines' residual-free check
+    /// (see [Engines::has_residuals][crate::Engines::has_residuals]).
+    pub fn has_open_decl_slots(&self) -> bool {
+        !(self.function_open_slots.read().is_empty()
+            && self.impl_self_or_trait_open_slots.read().is_empty()
+            && self.trait_open_slots.read().is_empty()
+            && self.abi_open_slots.read().is_empty())
+    }
+
+    /// Forgets all the currently open decl slots, by moving them from the open
+    /// slots to the forgotten slots.
+    ///
+    /// Decl slots can be open only during the package type checking that reserved them.
+    /// The [ReservedDeclId] tokens owning them cannot outlive it. Therefore,
+    /// any slot open in between package type checks is an abandoned residue of a previous
+    /// package type check that has failed or was canceled. E.g., of a dependency package
+    /// whose type check failed, or of an earlier canceled LSP compilation on the
+    /// same engines.
+    ///
+    /// This is the [DeclEngine]'s part of the abandoned residuals clean-up,
+    /// driven by the [Engines][crate::Engines] (see
+    /// [ResidualsCleanup]).
+    pub(crate) fn forget_abandoned_open_slots(&self, cleanup: &ResidualsCleanup) {
+        self.forget_open_slots_since(OpenDeclSlotsMark::default(), cleanup);
+    }
+
+    /// Marks the currently open decl slots and returns the mark, to be used
+    /// in a later call to [DeclEngine::forget_open_slots_since].
+    ///
+    /// This is the [DeclEngine]'s part of the residuals clean-up protocol,
+    /// driven by the [Engines][crate::Engines] (see [ResidualsCleanup]).
+    pub(crate) fn mark_open_slots(&self, _cleanup: &ResidualsCleanup) -> OpenDeclSlotsMark {
+        OpenDeclSlotsMark {
+            functions: self.function_open_slots.read().keys().copied().collect(),
+            impls: self
+                .impl_self_or_trait_open_slots
+                .read()
+                .keys()
+                .copied()
+                .collect(),
+            traits: self.trait_open_slots.read().keys().copied().collect(),
+            abis: self.abi_open_slots.read().keys().copied().collect(),
+        }
+    }
+
+    /// Forgets all the decl slots opened since the `mark` was taken, by moving
+    /// them from the open slots to the forgotten slots.
+    ///
+    /// This is the [DeclEngine]'s part of the residuals clean-up protocol,
+    /// driven by the [Engines][crate::Engines] (see [ResidualsCleanup]).
+    ///
+    /// Forgetting does not deallocate anything. The forgotten slots, and the
+    /// garbage declarations created during the failed compilation that left
+    /// them open, stay in the engine until they are reclaimed during
+    /// [DeclEngine::clear_module] or [DeclEngine::clear_program], attributed
+    /// to their module via their autogenerated [SourceId]s.
+    pub(crate) fn forget_open_slots_since(
+        &self,
+        mark: OpenDeclSlotsMark,
+        _cleanup: &ResidualsCleanup,
+    ) {
+        macro_rules! forget {
+            ($open_slots:ident, $forgotten_slots:ident, $marked:expr) => {{
+                let mut open_slots = self.$open_slots.write();
+                let forgotten: Vec<_> = open_slots
+                    .keys()
+                    .filter(|decl_id| !$marked.contains(decl_id))
+                    .copied()
+                    .collect();
+                let mut forgotten_slots = self.$forgotten_slots.write();
+                for decl_id in forgotten {
+                    let source_id = open_slots.remove(&decl_id).flatten();
+                    forgotten_slots.insert(decl_id, source_id);
+                }
+            }};
+        }
+        forget!(
+            function_open_slots,
+            function_forgotten_slots,
+            mark.functions
+        );
+        forget!(
+            impl_self_or_trait_open_slots,
+            impl_self_or_trait_forgotten_slots,
+            mark.impls
+        );
+        forget!(trait_open_slots, trait_forgotten_slots, mark.traits);
+        forget!(abi_open_slots, abi_forgotten_slots, mark.abis);
+    }
+
+    /// Reclaims the abandoned open decl slots and the forgotten decl slots
+    /// (see [DeclEngine::forget_open_slots_since]) attributable to a cleared
+    /// module or program. Reclaiming removes their open or forgotten slots
+    /// entries. If a slot was never filled (and thus cannot be seen by the
+    /// span-based clearing of the slabs, because it has no content), returns
+    /// the slot to the free list and removes its parsed decl id mapping.
+    ///
+    /// Note that this method must only be called in between compilations, when
+    /// the [ReservedDeclId] tokens owning the open slots are guaranteed to be
+    /// dropped (the compilation that created them is finished or canceled).
+    /// This is the same contract under which [DeclEngine::clear_module] and
+    /// [DeclEngine::clear_program], which call this method, operate.
+    fn reclaim_abandoned_open_and_forgotten_slots(
+        &mut self,
+        is_cleared: &impl Fn(&SourceId) -> bool,
+    ) {
+        macro_rules! reclaim {
+            ($slab:ident, $parsed_slab:ident, $slots:ident) => {{
+                let mut slots = self.$slots.write();
+                let abandoned: Vec<_> = slots
+                    .iter()
+                    .filter(|(_, source_id)| source_id.is_some_and(|id| is_cleared(&id)))
+                    .map(|(decl_id, _)| *decl_id)
+                    .collect();
+                for decl_id in abandoned {
+                    slots.remove(&decl_id);
+                    if !self.$slab.is_filled(decl_id.inner()) {
+                        self.$slab.release_reserved(decl_id.inner());
+                        self.$parsed_slab.write().remove(&decl_id);
+                    }
+                }
+            }};
+        }
+        reclaim!(
+            function_slab,
+            function_parsed_decl_id_map,
+            function_open_slots
+        );
+        reclaim!(
+            impl_self_or_trait_slab,
+            impl_self_or_trait_parsed_decl_id_map,
+            impl_self_or_trait_open_slots
+        );
+        reclaim!(trait_slab, trait_parsed_decl_id_map, trait_open_slots);
+        reclaim!(abi_slab, abi_parsed_decl_id_map, abi_open_slots);
+        reclaim!(
+            function_slab,
+            function_parsed_decl_id_map,
+            function_forgotten_slots
+        );
+        reclaim!(
+            impl_self_or_trait_slab,
+            impl_self_or_trait_parsed_decl_id_map,
+            impl_self_or_trait_forgotten_slots
+        );
+        reclaim!(trait_slab, trait_parsed_decl_id_map, trait_forgotten_slots);
+        reclaim!(abi_slab, abi_parsed_decl_id_map, abi_forgotten_slots);
+    }
+
     /// Given a [DeclId] `index`, finds all the parents of `index` and all the
     /// recursive parents of those parents, and so on. Does not perform
     /// duplicated computation. If a parent of a [DeclId] has already been

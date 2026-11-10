@@ -1,0 +1,8 @@
+[[package]]
+name = "std"
+source = "path+from-root-D5316A7ED3B28F83"
+
+[[package]]
+name = "trait_provided_methods"
+source = "member"
+dependencies = ["std"]

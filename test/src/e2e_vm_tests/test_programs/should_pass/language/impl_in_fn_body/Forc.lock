@@ -1,0 +1,8 @@
+[[package]]
+name = "impl_in_fn_body"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-42C885AC0C4C656A"

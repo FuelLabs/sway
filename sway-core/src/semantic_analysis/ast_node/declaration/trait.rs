@@ -71,10 +71,13 @@ impl TyTraitDecl {
         Ok(())
     }
 
+    /// Type-checks `trait_decl`. The resulting [ty::TyTraitDecl] will have
+    /// its decl id set to the [DeclId] of the `reserved_trait_decl_id`.
     pub(crate) fn type_check(
         handler: &Handler,
         ctx: TypeCheckContext,
         trait_decl: &TraitDeclaration,
+        reserved_trait_decl_id: &ReservedDeclId<ty::TyTraitDecl>,
     ) -> Result<Self, ErrorEmitted> {
         let TraitDeclaration {
             name,
@@ -159,8 +162,8 @@ impl TyTraitDecl {
                     }
                 }
 
-                // insert placeholder functions representing the interface surface
-                // to allow methods to use those functions
+                // Insert placeholder functions representing the interface surface
+                // to allow methods to use those functions.
                 ctx.insert_trait_implementation(
                     handler,
                     CallPath::ident_to_fullpath(name.clone(), ctx.namespace),
@@ -225,8 +228,8 @@ impl TyTraitDecl {
                     }
                 }
 
-                // insert placeholder functions representing the interface surface
-                // to allow methods to use those functions
+                // Insert placeholder functions representing the interface surface
+                // to allow methods to use those functions.
                 ctx.insert_trait_implementation(
                     handler,
                     CallPath::ident_to_fullpath(name.clone(), ctx.namespace()),
@@ -241,11 +244,14 @@ impl TyTraitDecl {
                     IsImplInterfaceSurface::No,
                 )?;
 
-                // Type check the items.
+                // Type-check the items.
+                let trait_ty_decl = ty::TyDecl::TraitDecl(ty::TraitDecl {
+                    decl_id: reserved_trait_decl_id.id(),
+                });
                 let mut new_items = vec![];
                 for method_decl_id in methods.iter() {
                     let method = engines.pe().get_function(method_decl_id);
-                    let method = ty::TyFunctionDecl::type_check(
+                    let mut method = ty::TyFunctionDecl::type_check(
                         handler,
                         ctx.by_ref(),
                         &method,
@@ -254,6 +260,9 @@ impl TyTraitDecl {
                         Some(self_type_param.type_id),
                     )
                     .unwrap_or_else(|_| ty::TyFunctionDecl::error(&method));
+                    // The provided method is born with its `implementing_type`
+                    // already set, pointing to the reserved trait decl.
+                    method.set_implementing_type(trait_ty_decl.clone());
                     new_items.push(ty::TyTraitItem::Fn(
                         decl_engine.insert(method, *method_decl_id),
                     ));

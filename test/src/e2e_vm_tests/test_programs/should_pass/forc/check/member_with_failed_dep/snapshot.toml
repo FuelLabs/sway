@@ -1,0 +1,14 @@
+# Note that `forc check` succeeding here, although the dependency has errors, is
+# itself a bug in the `forc check` CLI command, tracked in
+# https://github.com/FuelLabs/sway/issues/7760. Once that issue is fixed,
+# `forc check` will exit with a non-zero code, reporting the dependency's error.
+# The witness this test provides remains the same: the output must not contain
+# the internal compiler error guarding against decl slots left open after a
+# successfully finished package type checking - the decl slots left open by the
+# failed type check of the dependency must not poison the member's type check.
+cmds = [
+    "echo `forc check` must succeed: the member package is valid, and the decl slots left open by the failed type check of the dependency must not poison the member's type check.",
+    "forc check --path {root}/member_pkg",
+    "echo `forc build` must fail: it witnesses that the dependency indeed fails to compile.",
+    "forc build --path {root}/member_pkg",
+]

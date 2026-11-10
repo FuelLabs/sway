@@ -90,10 +90,47 @@ mod test {
     where
         R: completest_pty::RuntimeBuilder,
     {
-        let bin_root = "/tmp/bin".into();
-        let home = "/tmp/home".into();
+        // Each shell gets its own directories, so that the tests, which run in
+        // parallel, do not interfere with each other.
+        let bin_root = std::env::temp_dir().join(format!("forc-completions-{shell}-bin"));
+        let home = std::env::temp_dir().join(format!("forc-completions-{shell}-home"));
+
+        std::fs::create_dir_all(&bin_root).expect("create bin root");
+        suppress_sudo_hint(&bin_root);
+
         let runtime = R::new(bin_root, home).expect("runtime");
         build_script_and_test(runtime, shell, "forc", &Forc::possible_values());
+    }
+
+    /// Suppresses Ubuntu's "sudo hint" in the shells spawned by the tests, by
+    /// placing a `groups` stub into `bin_root`.
+    ///
+    /// Ubuntu's system-wide `/etc/bash.bashrc`, which an interactive `bash`
+    /// sources even when started with `--rcfile`, prints the sudo hint ("To
+    /// run a command as administrator (user \"root\"), use \"sudo
+    /// <command>\". ...") when the user is in the `sudo` group and `$HOME`
+    /// contains neither `.sudo_as_admin_successful` nor `.hushlogin`. That is
+    /// the case, e.g., on the Ubuntu 26.04 CI runner images, where the hint
+    /// breaks the tests in two ways: it pollutes the captured completion
+    /// output, and - being printed well before the completions are rendered -
+    /// it makes `completest`'s wait-for-output-quiescence logic consider the
+    /// shell done and kill it before the completions are even rendered.
+    ///
+    /// The hint is conditioned on the output of `groups`, which the shell
+    /// resolves via `PATH`, and `completest` puts `bin_root` at the front of
+    /// the `PATH` of the shells it spawns. A `groups` stub that reports no
+    /// sudo-like group therefore suppresses the hint, deterministically and
+    /// only within the spawned shells.
+    fn suppress_sudo_hint(bin_root: &std::path::Path) {
+        use std::os::unix::fs::PermissionsExt;
+
+        let groups_stub = bin_root.join("groups");
+        std::fs::write(&groups_stub, "#!/bin/sh\necho users\n").expect("write groups stub");
+        let mut permissions = std::fs::metadata(&groups_stub)
+            .expect("groups stub metadata")
+            .permissions();
+        permissions.set_mode(0o755);
+        std::fs::set_permissions(&groups_stub, permissions).expect("make groups stub executable");
     }
 
     fn build_script_and_test<R>(

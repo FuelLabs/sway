@@ -14,7 +14,7 @@ use crate::{
         ty::{self, TyAstNode, TyDecl},
     },
     semantic_analysis::TypeCheckContext,
-    BuildTarget, Engines, TypeInfo, TypeParameter,
+    BuildTarget, Engines, SpeculationHandler, TypeInfo, TypeParameter,
 };
 use sway_error::handler::Handler;
 use sway_parse::Parse;
@@ -157,6 +157,10 @@ where
 
     /// Parses `code` that contains [Declaration::FunctionDeclaration] into the
     /// corresponding [TyAstNode].
+    ///
+    /// The type checking of the generated code is a speculation (see
+    /// [SpeculationHandler]). On a failure, the speculation handler is returned
+    /// to the caller, who can deliberately swallow the errors.
     pub fn parse_fn_to_ty_ast_node(
         &mut self,
         engines: &Engines,
@@ -165,6 +169,28 @@ where
         code: &str,
         dbg_generation: DbgGeneration,
     ) -> Result<TyAstNode, Handler> {
+        let (node, speculation_handler) = Handler::speculate(engines, |handler| {
+            self.parse_fn_to_ty_ast_node_inner(
+                handler,
+                engines,
+                original_source_id,
+                kind,
+                code,
+                dbg_generation,
+            )
+        });
+        node.ok_or(speculation_handler)
+    }
+
+    fn parse_fn_to_ty_ast_node_inner(
+        &mut self,
+        handler: &Handler,
+        engines: &Engines,
+        original_source_id: Option<&SourceId>,
+        kind: FunctionDeclarationKind,
+        code: &str,
+        dbg_generation: DbgGeneration,
+    ) -> Option<TyAstNode> {
         let mut ctx = crate::transform::to_parsed_lang::Context::new(
             crate::BuildTarget::Fuel,
             dbg_generation,
@@ -172,12 +198,10 @@ where
             "", // this is only used for self impl contracts
         );
 
-        let handler = Handler::default();
-
         let item = self.parse(engines, original_source_id, code);
         let nodes = crate::transform::to_parsed_lang::item_to_ast_nodes(
             &mut ctx,
-            &handler,
+            handler,
             engines,
             item,
             false,
@@ -201,18 +225,18 @@ where
 
         let mut ctx = self.ctx.by_ref();
         let _r = TyDecl::collect(
-            &handler,
+            handler,
             engines,
             ctx.collection_ctx,
             &Declaration::FunctionDeclaration(decl),
         );
         if handler.has_errors() {
-            return Err(handler);
+            return None;
         }
 
-        let r = ctx.scoped(&handler, None, |ctx| {
+        let r = ctx.scoped(handler, None, |ctx| {
             TyDecl::type_check(
-                &handler,
+                handler,
                 &mut ctx.by_ref(),
                 &parsed::Declaration::FunctionDeclaration(decl),
             )
@@ -221,12 +245,12 @@ where
         // Uncomment this to understand why an entry function was not generated
         // println!("{}, {:#?}", r.is_ok(), handler);
 
-        let decl = r.map_err(|_| handler.clone())?;
+        let decl = r.ok()?;
 
         if handler.has_errors() || matches!(decl, TyDecl::ErrorRecovery(_, _)) {
-            Err(handler)
+            None
         } else {
-            Ok(TyAstNode {
+            Some(TyAstNode {
                 span: decl.span(engines),
                 content: ty::TyAstNodeContent::Declaration(decl),
             })
@@ -235,6 +259,12 @@ where
 
     /// Parses `code` that contains [Declaration::ImplSelfOrTrait] into the
     /// corresponding [TyAstNode].
+    ///
+    /// The type checking of the generated code is a speculation (see
+    /// [SpeculationHandler]). The trait auto-implementations are generated for
+    /// every type, and legitimately fail to type check for the types that do
+    /// not support the auto-implemented trait. On a failure, the speculation
+    /// handler is returned to the caller, who deliberately swallows the errors.
     fn parse_impl_trait_to_ty_ast_node(
         &mut self,
         engines: &Engines,
@@ -242,6 +272,26 @@ where
         code: &str,
         dbg_generation: DbgGeneration,
     ) -> Result<TyAstNode, Handler> {
+        let (node, speculation_handler) = Handler::speculate(engines, |handler| {
+            self.parse_impl_trait_to_ty_ast_node_inner(
+                handler,
+                engines,
+                original_source_id,
+                code,
+                dbg_generation,
+            )
+        });
+        node.ok_or(speculation_handler)
+    }
+
+    fn parse_impl_trait_to_ty_ast_node_inner(
+        &mut self,
+        handler: &Handler,
+        engines: &Engines,
+        original_source_id: Option<&SourceId>,
+        code: &str,
+        dbg_generation: DbgGeneration,
+    ) -> Option<TyAstNode> {
         let mut ctx = crate::transform::to_parsed_lang::Context::new(
             BuildTarget::Fuel,
             dbg_generation,
@@ -249,11 +299,9 @@ where
             "", // this is only used for self impl contracts
         );
 
-        let handler = Handler::default();
-
         let item = self.parse(engines, original_source_id, code);
         let nodes = crate::transform::to_parsed_lang::item_to_ast_nodes(
-            &mut ctx, &handler, engines, item, false, None,
+            &mut ctx, handler, engines, item, false, None,
         )
         .unwrap();
 
@@ -263,27 +311,25 @@ where
         };
 
         if handler.has_errors() {
-            return Err(handler);
+            return None;
         }
 
         let decl = Declaration::ImplSelfOrTrait(decl);
         let mut ctx = self.ctx.by_ref();
-        let _r = TyDecl::collect(&handler, engines, ctx.collection_ctx, &decl);
+        let _r = TyDecl::collect(handler, engines, ctx.collection_ctx, &decl);
         if handler.has_errors() {
-            return Err(handler);
+            return None;
         }
 
-        let r = ctx.scoped(&handler, None, |ctx| {
-            TyDecl::type_check(&handler, ctx, &decl)
-        });
+        let r = ctx.scoped(handler, None, |ctx| TyDecl::type_check(handler, ctx, &decl));
 
         // Uncomment this to understand why auto impl failed for a type.
         // println!("{:#?}", handler);
 
-        let decl = r.map_err(|_| handler.clone())?;
+        let decl = r.ok()?;
 
         if handler.has_errors() || matches!(decl, TyDecl::ErrorRecovery(_, _)) {
-            Err(handler)
+            None
         } else {
             let impl_trait = if let TyDecl::ImplSelfOrTrait(impl_trait_id) = &decl {
                 engines.de().get_impl_self_or_trait(&impl_trait_id.decl_id)
@@ -293,7 +339,7 @@ where
 
             // Insert trait implementation generated in the previous scope into the current scope.
             ctx.insert_trait_implementation(
-                &handler,
+                handler,
                 impl_trait.trait_name.clone(),
                 impl_trait.trait_type_arguments.clone(),
                 impl_trait.implementing_for.type_id,
@@ -310,7 +356,7 @@ where
             )
             .ok();
 
-            Ok(TyAstNode {
+            Some(TyAstNode {
                 span: decl.span(engines),
                 content: ty::TyAstNodeContent::Declaration(decl),
             })

@@ -24,8 +24,8 @@ use crate::{
     decl_engine::*,
     engine_threading::*,
     language::ty::{
-        self, TyAbiDecl, TyConstantDecl, TyDeclParsedType, TyEnumDecl, TyFunctionDecl,
-        TyImplSelfOrTrait, TyStorageDecl, TyStructDecl, TyTraitDecl, TyTraitFn, TyTraitType,
+        TyAbiDecl, TyConstantDecl, TyDeclParsedType, TyEnumDecl, TyFunctionDecl, TyImplSelfOrTrait,
+        TyStorageDecl, TyStructDecl, TyTraitDecl, TyTraitFn, TyTraitType,
     },
     semantic_analysis::TypeCheckContext,
     type_system::*,
@@ -278,14 +278,5 @@ impl ReplaceDecls for DeclRefFunction {
             }
         }
         Ok(HasChanges::No)
-    }
-}
-
-impl ReplaceFunctionImplementingType for DeclRefFunction {
-    fn replace_implementing_type(&mut self, engines: &Engines, implementing_type: ty::TyDecl) {
-        let decl_engine = engines.de();
-        let mut decl = (*decl_engine.get(&self.id)).clone();
-        decl.set_implementing_type(implementing_type);
-        decl_engine.replace(self.id, decl);
     }
 }
