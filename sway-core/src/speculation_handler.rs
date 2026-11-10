@@ -22,11 +22,13 @@ use crate::Engines;
 /// fail the whole compilation. A speculation whose errors are discarded,
 /// however, might have a need to clean up after itself.
 ///
-/// Currently, only the [DeclEngine][crate::decl_engine::DeclEngine]
-/// needs such a clean-up. A failed speculation leaves decl slots open (see
+/// E.g., a failed speculation leaves decl slots open (see
 /// [DeclEngineReserve][crate::decl_engine::DeclEngineReserve]), which would
-/// break the invariant that a successfully finished type checking of a program
-/// leaves no open decl slots.
+/// break the invariant that a successfully finished package type checking
+/// leaves the engines residual-free (see
+/// [Engines::has_residuals][crate::Engines::has_residuals]). Which engines
+/// need such a clean-up, and of what, is the knowledge of the [Engines]
+/// (see `Engines::forget_residuals_during`).
 ///
 /// Use this API exactly where the private handler wraps a compilation that can
 /// alter engines, and whose errors may be discarded.
@@ -75,12 +77,7 @@ pub trait SpeculationHandler: Borrow<Handler> {
 impl SpeculationHandler for Handler {
     fn speculate<T>(engines: &Engines, f: impl FnOnce(&Handler) -> T) -> (T, Handler) {
         let speculation_handler = Handler::default();
-        // Currently, only the `DeclEngine` needs a clean-up of the residuals
-        // of a speculation. The decl slots that a failed speculation leaves
-        // open get forgotten.
-        let result = engines
-            .de()
-            .forget_open_slots_during(|| f(&speculation_handler));
+        let result = engines.forget_residuals_during(|| f(&speculation_handler));
         (result, speculation_handler)
     }
 }

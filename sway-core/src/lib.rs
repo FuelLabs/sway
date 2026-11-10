@@ -882,6 +882,15 @@ pub fn parsed_to_ast(
 ) -> Result<ty::TyProgram, TypeCheckFailed> {
     let lsp_config = build_config.map(|x| x.lsp_mode.clone()).unwrap_or_default();
 
+    // The engines can contain residuals, e.g., open decl slots, only during a package
+    // type checking. Any residual present now is abandoned. It is left behind by a previous
+    // package type check that has failed or was canceled on the same engines. E.g., by
+    // the type check of a dependency package that failed, or by an earlier canceled
+    // LSP compilation. We have to forget those residuals, so that the residual-free check after
+    // a successfully finished type checking of this package (see below) sees only the
+    // residuals of this very type check.
+    engines.forget_abandoned_residuals();
+
     // Build the dependency graph for the submodules.
     build_module_dep_graph(handler, &mut parse_program.root).map_err(|error| TypeCheckFailed {
         root_module: None,
@@ -895,8 +904,8 @@ pub fn parsed_to_ast(
             namespace: initial_namespace.clone(),
             error,
         })?;
-    // Collect the program symbols.
 
+    // Collect the program symbols.
     let mut collection_ctx =
         ty::TyProgram::collect(handler, engines, parse_program, collection_namespace).map_err(
             |error| TypeCheckFailed {
@@ -941,16 +950,24 @@ pub fn parsed_to_ast(
         }
     })?;
 
-    // After a successfully finished type checking of a package, every reserved decl
-    // slot must be filled and frozen. An open slot at this point means that an
-    // unfinished declaration has leaked out of the type checking, and is a bug in
-    // the compiler. Note that in the case of a failed type checking (`handler.has_errors`),
-    // open slots are possible and valid. Also note that the speculative type checking,
-    // e.g., trait auto-impls, forgets the slots left open by its failures
-    // (whose errors are deliberately swallowed), and thus never leaves open slots behind.
-    if !handler.has_errors() && engines.de().has_open_decl_slots() {
+    // After a successfully finished type checking of a package, the engines must be
+    // residual-free. E.g., every reserved decl slot must be filled and frozen.
+    //
+    // A residual at this point means that an unfinished construction, e.g., an open
+    // decl slot, has leaked out of the package type checking, and is a bug in the
+    // compiler. Since the abandoned residuals of previous failed or canceled package
+    // type checks were forgotten at the beginning of this function, every residual
+    // found here was left behind by this very type check.
+    //
+    // Note that in the case of a failed type checking (`handler.has_errors`),
+    // residuals are possible and valid.
+    //
+    // Also note that the speculative type checking, e.g., trait auto-impls,
+    // forgets the residuals left behind by its failures (whose errors are
+    // deliberately swallowed), and thus never leaves residuals behind.
+    if !handler.has_errors() && engines.has_residuals() {
         let error = handler.emit_err(CompileError::Internal(
-            "Decl slots are left open after a successfully finished type checking.",
+            "The engines are left with residuals after a successfully finished package type checking.",
             Span::dummy(),
         ));
         return Err(TypeCheckFailed {
@@ -1528,6 +1545,17 @@ pub fn ast_to_ir<'eng>(
         Ok(typed_program) => typed_program,
         Err(err) => return Err(err.error),
     };
+
+    // Reaching the IR generation means that the frontend has finished without
+    // errors, i.e., `programs.typed` is `Ok`, and the clients proceed to the IR
+    // generation only with an error-free handler. Therefore, same as after a successfully
+    // finished project type checking, the engines must be residual-free at this point.
+    if engines.has_residuals() {
+        return Err(handler.emit_err(CompileError::Internal(
+            "The engines are left with residuals at the beginning of the IR generation.",
+            Span::dummy(),
+        )));
+    }
 
     let mut panic_occurrences = PanicOccurrences::default();
     let mut panicking_call_occurrences = PanickingCallOccurrences::default();

@@ -1,0 +1,9 @@
+[project]
+authors = ["Fuel Labs <contact@fuel.sh>"]
+entry = "lib.sw"
+implicit-std = false
+license = "Apache-2.0"
+name = "member_pkg"
+
+[dependencies]
+dep_pkg = { path = "../dep_pkg" }

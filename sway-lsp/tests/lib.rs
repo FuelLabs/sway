@@ -2455,6 +2455,12 @@ fn garbage_collection_tests() -> Result<(), String> {
                 .join("src/main.sw"),
         ),
         (
+            "dep_with_discarded_errors".into(),
+            sway_workspace_dir()
+                .join("sway-lsp/tests/fixtures/garbage_collection/dep_with_discarded_errors/main_script")
+                .join("src/main.sw"),
+        ),
+        (
             "minimal_script".into(),
             sway_workspace_dir()
                 .join("sway-lsp/tests/fixtures/garbage_collection/minimal_script")
