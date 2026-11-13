@@ -53,7 +53,7 @@ Optional:
 * `--manifest-path <PATH>` to specify a manifest file.
 
 > ⚠️ **Note:**
-> We do not currently support offline mode for projects that use **registry** sources.
+> In offline mode (`--offline`), **registry** sources can only use packages that an earlier online build has already fetched.
 > Also wildcard declarations `(ex: custom_lib = *)` to get the latest version available for that package or caret declarations `(ex: custom_lib = ^0.1)` to get `SemVer` compatible latest available option for a given dependency is not supported yet.
 
 Once the package is added, running `forc build` will automatically fetch and resolve the dependencies.

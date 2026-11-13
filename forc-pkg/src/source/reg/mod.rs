@@ -338,9 +338,43 @@ fn tmp_registry_package_dir(
         .join(repo_dir_name)
 }
 
+/// Returns the CID of a copy of the package that was already fetched into `pkg_dir`, if any.
+///
+/// `fetch` stores a registry package as `<pkg_dir>/<cid>/...`.
+fn find_fetched_cid(pkg_dir: &Path, pkg_name: &str) -> Option<Cid> {
+    // Co-ordinate access to the registry checkout directory using an advisory file lock.
+    let lock = forc_util::path_lock(pkg_dir).ok()?;
+    let _guard = lock.read().ok()?;
+    fs::read_dir(pkg_dir).ok()?.flatten().find_map(|entry| {
+        let file_name = entry.file_name();
+        let cid = file_name.to_str().filter(|name| validate_cid(name))?;
+        manifest::find_within(&entry.path(), pkg_name)?;
+        Cid::from_str(cid).ok()
+    })
+}
+
 impl source::Pin for Source {
     type Pinned = Pinned;
     fn pin(&self, ctx: source::PinCtx) -> anyhow::Result<(Self::Pinned, PathBuf)> {
+        // The registry index can't be reached in offline mode. Registry versions are exact, so a
+        // copy fetched by an earlier online build is the package we would pin anyway.
+        if ctx.offline() {
+            let path = registry_package_dir(&self.namespace, ctx.name, &self.version);
+            let cid = find_fetched_cid(&path, ctx.name).ok_or_else(|| {
+                anyhow!(
+                    "Unable to fetch pkg {:?} {} from the registry in offline mode: \
+                    it has not been fetched before",
+                    ctx.name,
+                    self.version
+                )
+            })?;
+            let pinned = Pinned {
+                source: self.clone(),
+                cid,
+            };
+            return Ok((pinned, path));
+        }
+
         let pkg_name = ctx.name.to_string();
         let fetch_id = ctx.fetch_id();
         let source = self.clone();
@@ -686,12 +720,68 @@ mod tests {
         block_on_any_runtime, fetch, file_location::Namespace, registry_package_dir,
         resolve_to_cid, Pinned, Source,
     };
-    use crate::source::{
-        ipfs::Cid,
-        reg::index_file::{IndexFile, PackageEntry},
-        IPFSNode,
+    use crate::{
+        source::{
+            self,
+            ipfs::Cid,
+            reg::index_file::{IndexFile, PackageEntry},
+            IPFSNode, Pin, PinCtx,
+        },
+        PinnedId,
     };
     use std::{fs, str::FromStr};
+
+    fn pin_offline(source: &Source) -> anyhow::Result<(Pinned, std::path::PathBuf)> {
+        let ipfs_node = IPFSNode::default();
+        let ctx = PinCtx {
+            fetch_id: 0,
+            path_root: PinnedId::new("root", &source::Pinned::MEMBER),
+            offline: true,
+            name: &source.name,
+            ipfs_node: &ipfs_node,
+        };
+        source.pin(ctx)
+    }
+
+    #[test]
+    fn pin_offline_uses_previously_fetched_package() {
+        let source = Source {
+            name: "offline_fetched_pkg".to_string(),
+            version: semver::Version::new(1, 2, 3),
+            namespace: Namespace::Flat,
+        };
+        let cid = "QmdMVqLqpba2mMB5AUjYCxubC6tLGevQFunpBkbC2UbrKS";
+
+        // Lay the package out the way `fetch` does: `<pkg_dir>/<cid>/...`.
+        let pkg_dir = registry_package_dir(&source.namespace, &source.name, &source.version);
+        let manifest_dir = pkg_dir.join(cid).join(&source.name);
+        fs::create_dir_all(manifest_dir.join("src")).unwrap();
+        fs::write(
+            manifest_dir.join("Forc.toml"),
+            "[project]\nauthors = [\"Fuel Labs <contact@fuel.sh>\"]\nentry = \"lib.sw\"\nlicense = \"Apache-2.0\"\nname = \"offline_fetched_pkg\"\nimplicit-std = false\n",
+        )
+        .unwrap();
+        fs::write(manifest_dir.join("src").join("lib.sw"), "library;\n").unwrap();
+
+        let (pinned, path) = pin_offline(&source).unwrap();
+
+        assert_eq!(pinned.source, source);
+        assert_eq!(pinned.cid, Cid::from_str(cid).unwrap());
+        assert_eq!(path, pkg_dir);
+    }
+
+    #[test]
+    fn pin_offline_without_fetched_package_fails() {
+        let source = Source {
+            name: "offline_missing_pkg".to_string(),
+            version: semver::Version::new(1, 2, 3),
+            namespace: Namespace::Flat,
+        };
+
+        let err = pin_offline(&source).unwrap_err().to_string();
+
+        assert!(err.contains("offline mode"), "unexpected error: {err}");
+    }
 
     #[test]
     fn parse_pinned_entry_without_namespace() {
