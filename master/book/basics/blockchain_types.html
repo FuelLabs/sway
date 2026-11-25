@@ -1,0 +1,288 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Blockchain Types - The Sway Programming Language</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../highlight.css">
+        <link rel="stylesheet" href="../tomorrow-night.css">
+        <link rel="stylesheet" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">The Sway Programming Language</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/FuelLabs/sway" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="blockchain-types"><a class="header" href="#blockchain-types">Blockchain Types</a></h1>
+<p>Sway is fundamentally a blockchain language, and it offers a selection of types tailored for the blockchain use case.</p>
+<p>These are provided via the standard library (<a href="https://github.com/FuelLabs/sway/tree/master/sway-lib-std"><code>lib-std</code></a>) which both add a degree of type-safety, as well as make the intention of the developer more clear.</p>
+<h2 id="address-type"><a class="header" href="#address-type"><code>Address</code> Type</a></h2>
+<!-- This section should explain the `Address` type -->
+<!-- address:example:start -->
+<p>The <code>Address</code> type is a type-safe wrapper around the primitive <code>b256</code> type. Unlike the EVM, an address <strong>never</strong> refers to a deployed smart contract (see the <code>ContractId</code> type below). An <code>Address</code> can be either the hash of a public key (effectively an <a href="https://ethereum.org/en/whitepaper/#ethereum-accounts">externally owned account</a> if you're coming from the EVM) or the hash of a <a href="../sway-program-types/predicates.html">predicate</a>. Addresses own UTXOs.</p>
+<!-- address:example:end -->
+<p>An <code>Address</code> is implemented as follows.</p>
+<pre><code class="language-sway">pub struct Address {
+    value: b256,
+}
+</code></pre>
+<p>Casting between the <code>b256</code> and <code>Address</code> types must be done explicitly:</p>
+<pre><code class="language-sway">let my_number: b256 = 0x000000000000000000000000000000000000000000000000000000000000002A;
+let my_address: Address = Address::from(my_number);
+let forty_two: b256 = my_address.into();
+</code></pre>
+<h2 id="contractid-type"><a class="header" href="#contractid-type"><code>ContractId</code> Type</a></h2>
+<!-- This section should explain the `ContractId` type -->
+<!-- contract_id:example:start -->
+<p>The <code>ContractId</code> type is a type-safe wrapper around the primitive <code>b256</code> type. A contract's ID is a unique, deterministic identifier analogous to a contract's address in the EVM. Contracts cannot own UTXOs but can own assets.</p>
+<!-- contract_id:example:end -->
+<p>A <code>ContractId</code> is implemented as follows.</p>
+<pre><code class="language-sway">pub struct ContractId {
+    value: b256,
+}
+</code></pre>
+<p>Casting between the <code>b256</code> and <code>ContractId</code> types must be done explicitly:</p>
+<pre><code class="language-sway">let my_number: b256 = 0x000000000000000000000000000000000000000000000000000000000000002A;
+let my_contract_id: ContractId = ContractId::from(my_number);
+let forty_two: b256 = my_contract_id.into();
+</code></pre>
+<h3 id="getting-a-contracts-contractid"><a class="header" href="#getting-a-contracts-contractid">Getting a Contract's <code>ContractId</code></a></h3>
+<p>To get the <code>ContractId</code> of a contract in an internal context use the <code>ContractId::this()</code> function:</p>
+<pre><code class="language-sway">impl MyContract for Contract {
+    fn foo() {
+        let this_contract_id: ContractId = ContractId::this();
+    }
+}
+</code></pre>
+<h2 id="identity-type"><a class="header" href="#identity-type"><code>Identity</code> Type</a></h2>
+<!-- This section should explain the `Identity` type -->
+<!-- identity:example:start -->
+<p>The <code>Identity</code> type is an enum that allows for the handling of both <code>Address</code> and <code>ContractId</code> types. This is useful in cases where either type is accepted, e.g., receiving funds from an identified sender, but not caring if the sender is an address or a contract.</p>
+<!-- identity:example:end -->
+<p>An <code>Identity</code> is implemented as follows.</p>
+<pre><code class="language-sway">pub enum Identity {
+    Address: Address,
+    ContractId: ContractId,
+}
+</code></pre>
+<p>Casting to an <code>Identity</code> must be done explicitly:</p>
+<pre><code class="language-sway">        let raw_address: b256 = 0xddec0e7e6a9a4a4e3e57d08d080d71a299c628a46bc609aab4627695679421ca;
+        let my_identity: Identity = Identity::Address(Address::from(raw_address));
+</code></pre>
+<p>A <code>match</code> statement can be used to return to an <code>Address</code> or <code>ContractId</code> as well as handle cases in which their execution differs.</p>
+<pre><code class="language-sway">        let my_contract_id: ContractId = match my_identity {
+            Identity::ContractId(identity) =&gt; identity,
+            _ =&gt; revert(0),
+        };
+</code></pre>
+<pre><code class="language-sway">        match my_identity {
+            Identity::Address(address) =&gt; takes_address(address),
+            Identity::ContractId(contract_id) =&gt; takes_contract_id(contract_id),
+        };
+</code></pre>
+<!-- This section should explain the use case for the `Identity` type -->
+<!-- use_identity:example:start -->
+<p>A common use case for <code>Identity</code> is for access control. The use of <code>Identity</code> uniquely allows both <code>ContractId</code> and <code>Address</code> to have access control inclusively.</p>
+<!-- use_identity:example:end -->
+<pre><code class="language-sway">        let sender = msg_sender().unwrap();
+        require(
+            sender == storage
+                .owner
+                .read(),
+            MyError::UnauthorizedUser(sender),
+        );
+</code></pre>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../basics/commonly_used_library_types.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../basics/converting_types.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../basics/commonly_used_library_types.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../basics/converting_types.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>

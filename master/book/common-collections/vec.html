@@ -1,0 +1,283 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Vectors on the Heap - The Sway Programming Language</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../highlight.css">
+        <link rel="stylesheet" href="../tomorrow-night.css">
+        <link rel="stylesheet" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">The Sway Programming Language</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/FuelLabs/sway" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="vectors-on-the-heap"><a class="header" href="#vectors-on-the-heap">Vectors on the Heap</a></h1>
+<p>The first collection type we’ll look at is <code>Vec&lt;T&gt;</code>, also known as a vector. Vectors allow you to store more than one value in a single data structure that puts all the values next to each other in memory. Vectors can only store values of the same type. They are useful when you have a list of items, such as the lines of text in a file or the prices of items in a shopping cart.</p>
+<p><code>Vec&lt;T&gt;</code> is included in the <a href="../introduction/standard_library.html#standard-library-prelude">standard library prelude</a> which means that there is no need to import it manually.</p>
+<h2 id="creating-a-new-vector"><a class="header" href="#creating-a-new-vector">Creating a New Vector</a></h2>
+<p>To create a new empty vector, we call the <code>Vec::new</code> function, as shown below:</p>
+<pre><code class="language-sway">    let v: Vec&lt;u64&gt; = Vec::new();
+</code></pre>
+<p>Note that we added a type annotation here. Because we aren’t inserting any values into this vector, the Sway compiler doesn’t know what kind of elements we intend to store. Vectors are implemented using generics which means that the <code>Vec&lt;T&gt;</code> type provided by the standard library can hold any type. When we create a vector to hold a specific type, we can specify the type within angle brackets. In the example above, we’ve told the Sway compiler that the <code>Vec&lt;T&gt;</code> in <code>v</code> will hold elements of the <code>u64</code> type.</p>
+<h2 id="updating-a-vector"><a class="header" href="#updating-a-vector">Updating a Vector</a></h2>
+<p>To create a vector and then add elements to it, we can use the <code>push</code> method, as shown below:</p>
+<pre><code class="language-sway">    let mut v = Vec::new();
+
+    v.push(5);
+    v.push(6);
+    v.push(7);
+    v.push(8);
+</code></pre>
+<p>As with any variable, if we want to be able to change its value, we need to make it mutable using the <code>mut</code> keyword, as discussed in the section <a href="../basics/variables.html#declaring-a-variable">Declaring a Variable</a>. The numbers we place inside are all of type <code>u64</code>, and the Sway compiler infers this from the data, so we don’t need the <code>Vec&lt;u64&gt;</code> annotation.</p>
+<h2 id="reading-elements-of-vectors"><a class="header" href="#reading-elements-of-vectors">Reading Elements of Vectors</a></h2>
+<p>To read a value stored in a vector at a particular index, you can use the <code>get</code> method as shown below:</p>
+<pre><code class="language-sway">    let third = v.get(2);
+    match third {
+        Some(third) =&gt; log(third),
+        None =&gt; revert(42),
+    }
+</code></pre>
+<p>Note two details here. First, we use the index value of <code>2</code> to get the third element because vectors are indexed by number, starting at zero. Second, we get the third element by using the <code>get</code> method with the index passed as an argument, which gives us an <code>Option&lt;T&gt;</code>.</p>
+<p>When the <code>get</code> method is passed an index that is outside the vector, it returns <code>None</code> without panicking. This is particularly useful if accessing an element beyond the range of the vector may happen occasionally under normal circumstances. Your code will then have logic to handle having either <code>Some(element)</code> or <code>None</code>. For example, the index could be coming as a contract method argument. If the argument passed is too large, the method <code>get</code> will return a <code>None</code> value, and the contract method may then decide to revert when that happens or return a meaningful error that tells the user how many items are in the current vector and give them another chance to pass a valid value.</p>
+<h2 id="iterating-over-the-values-in-a-vector"><a class="header" href="#iterating-over-the-values-in-a-vector">Iterating over the Values in a Vector</a></h2>
+<p>To access elements of a vector, we can iterate through the valid indices using a <code>while</code> loop and the <code>len</code> method as shown below:</p>
+<pre><code class="language-sway">    let mut i = 0;
+    while i &lt; v.len() {
+        log(v.get(i).unwrap());
+        i += 1;
+    }
+</code></pre>
+<p>Note two details here. First, we use the method <code>len</code> which returns the length of the vector. Second, we call the method <code>unwrap</code> to extract the <code>Option</code> returned by <code>get</code>. We know that <code>unwrap</code> will not fail (i.e. will not cause a revert) because each index <code>i</code> passed to <code>get</code> is known to be smaller than the length of the vector.</p>
+<p>The idiomatic and convenient way to access each element in a vector in turn, is to use the <code>for</code> loop in the combination with the <code>iter</code> method. The <code>iter</code> method returns an iterator that iterates over all the elements of the vector sequentially.</p>
+<pre><code class="language-sway">    for elem in v.iter() {
+        log(elem);
+    }
+</code></pre>
+<p>Note that <strong>modifying a vector during iteration, by e.g. adding or removing elements, is a logical error and results in an <a href="../reference/undefined_behavior.html">undefined behavior</a></strong>:</p>
+<pre><code class="language-sway">    for elem in v.iter() {
+        log(elem);
+        if elem == 3 {
+            v.push(6); // Modification causes undefined behavior!
+        }
+    }
+</code></pre>
+<p>Accessing vector elements via <code>while</code> loop should be used only when more control over traversal is needed. E.g., in the below example we iterate the vector backwards, accessing only every second element.</p>
+<pre><code class="language-sway">    // Start from the end
+    let mut i = v.len() - 1;
+    while 0 &lt;= i {
+        log(v.get(i).unwrap());
+        // Access every second element
+        i -= 2;
+    }
+</code></pre>
+<h2 id="using-an-enum-to-store-multiple-types"><a class="header" href="#using-an-enum-to-store-multiple-types">Using an Enum to store Multiple Types</a></h2>
+<p>Vectors can only store values that are the same type. This can be inconvenient; there are definitely use cases for needing to store a list of items of different types. Fortunately, the variants of an enum are defined under the same enum type, so when we need one type to represent elements of different types, we can define and use an enum!</p>
+<p>For example, say we want to get values from a row in a table in which some of the columns in the row contain integers, some <code>b256</code> values, and some Booleans. We can define an enum whose variants will hold the different value types, and all the enum variants will be considered the same type: that of the enum. Then we can create a vector to hold that enum and so, ultimately, holds different types. We’ve demonstrated this below:</p>
+<pre><code class="language-sway">    enum TableCell {
+        Int: u64,
+        B256: b256,
+        Boolean: bool,
+    }
+
+    let mut row = Vec::new();
+    row.push(TableCell::Int(3));
+    row.push(TableCell::B256(0x0101010101010101010101010101010101010101010101010101010101010101));
+    row.push(TableCell::Boolean(true));
+</code></pre>
+<p>Now that we’ve discussed some of the most common ways to use vectors, be sure to review the API documentation for all the many useful methods defined on <code>Vec&lt;T&gt;</code> by the standard library. For now, these can be found in the <a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/vec.sw">source code for <code>Vec&lt;T&gt;</code></a>. For example, in addition to <code>push</code>, a <code>pop</code> method removes and returns the last element, a <code>remove</code> method removes and returns the element at some chosen index within the vector, an <code>insert</code> method inserts an element at some chosen index within the vector, etc.</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../common-collections/index.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../common-collections/storage_vec.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../common-collections/index.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../common-collections/storage_vec.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>
