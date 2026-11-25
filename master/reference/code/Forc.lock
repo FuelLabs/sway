@@ -1,0 +1,261 @@
+[[package]]
+name = "annotation_style"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "annotations"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "arrays"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "assertions"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "asset_operations"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "associated-consts"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "booleans"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "bytes"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "call"
+source = "member"
+dependencies = [
+    "contract_interface",
+    "std",
+]
+
+[[package]]
+name = "call_data"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "comments"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "constants"
+source = "member"
+
+[[package]]
+name = "contract_interface"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "control_flow"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "counter"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "empty_storage_init"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "enum-advanced"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "enum_style"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "enums"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "fizzbuzz"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "functions"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "getters"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "hashing"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "interface"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "intermediate_variables"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "letter_casing"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "logging"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "my_lib"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "my_library"
+source = "member"
+dependencies = [
+    "my_other_library",
+    "std",
+]
+
+[[package]]
+name = "my_other_library"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "namespace"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "numerics"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "ownership"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "pattern_matching"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "reading_writing_to_storage"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "simple_predicate"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "simple_script"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-0F28276288D2432C"
+
+[[package]]
+name = "storage_init"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "storage_map"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "storage_vec"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "store_get"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "string_issue"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "strings"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "struct_shorthand"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "structs"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "tuples"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "unused_variables"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "variables"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "wallet"
+source = "member"
+dependencies = [
+    "interface",
+    "std",
+]
+
+[[package]]
+name = "wallet_example"
+source = "member"
+dependencies = ["std"]
