@@ -1,39 +1,76 @@
 //! Utility items shared between forc crates.
+//!
+//! # Features
+//!
+//! The default features preserve the full utility API, except for opt-in `tx` utilities.
+//! Set `default-features = false` to select only the capabilities your crate needs:
+//!
+//! - `bytecode`: bytecode parsing and identifiers in `bytecode`.
+//! - `cli`: `ForcCliResult`, `cli_examples!`, and the `ansiterm` and `paste` re-exports.
+//! - `diagnostics`: compiler diagnostic rendering and compilation status helpers.
+//! - `fs-locking`: `fs_locking` and `path_lock`.
+//! - `restricted`: `restricted`, name validation, and the `Regex` re-export.
+//! - `tx`: transaction receipts, log decoding, and salt arguments in `tx_utils`.
+//!   This feature also requires the Sway compiler for its ABI types.
+//!
+//! Common path, directory, string, and error helpers remain available without features.
+//! `cli_examples!` users must depend on `clap` when using its parser form.
+#[cfg(feature = "diagnostics")]
 use annotate_snippets::{
     renderer::{AnsiColor, Style},
     Annotation, AnnotationType, Renderer, Slice, Snippet, SourceAnnotation,
 };
-use anyhow::{bail, Context, Result};
-use forc_tracing::{println_action_green, println_error, println_red_err, println_yellow_err};
+#[cfg(feature = "fs-locking")]
+use anyhow::Context;
+use anyhow::{bail, Result};
+#[cfg(feature = "cli")]
+use forc_tracing::println_error;
+#[cfg(feature = "diagnostics")]
+use forc_tracing::{println_action_green, println_red_err, println_yellow_err};
+#[cfg(feature = "diagnostics")]
+use std::collections::HashSet;
+#[cfg(feature = "cli")]
+use std::process::Termination;
+#[cfg(feature = "fs-locking")]
 use std::{
-    collections::{hash_map, HashSet},
-    fmt::Display,
+    collections::hash_map,
     fs::File,
     hash::{Hash, Hasher},
-    path::{Path, PathBuf},
-    process::Termination,
-    str,
 };
+use std::{
+    fmt::Display,
+    path::{Path, PathBuf},
+};
+#[cfg(feature = "diagnostics")]
 use sway_core::language::parsed::TreeType;
+#[cfg(feature = "diagnostics")]
 use sway_error::{
     diagnostic::{Diagnostic, Issue, Label, LabelType, Level, ToDiagnostic},
     error::CompileError,
     warning::{CompileInfo, CompileWarning},
 };
+#[cfg(feature = "diagnostics")]
 use sway_types::{LineCol, LineColRange, SourceEngine, Span};
 use sway_utils::constants;
 
+#[cfg(feature = "bytecode")]
 pub mod bytecode;
+#[cfg(feature = "fs-locking")]
 pub mod fs_locking;
+#[cfg(feature = "restricted")]
 pub mod restricted;
 #[cfg(feature = "tx")]
 pub mod tx_utils;
 
+#[cfg(feature = "cli")]
 #[macro_use]
 pub mod cli;
 
+#[cfg(any(feature = "cli", feature = "diagnostics"))]
 pub use ansiterm;
+#[cfg(feature = "cli")]
 pub use paste;
+#[cfg(feature = "restricted")]
 pub use regex::Regex;
 
 pub const DEFAULT_OUTPUT_DIRECTORY: &str = "out";
@@ -47,6 +84,7 @@ pub type ForcResult<T, E = ForcError> = Result<T, E>;
 /// A wrapper around `ForcResult`. Designed to be returned from entry points as it handles
 /// error reporting and exits with correct exit code.
 #[derive(Debug)]
+#[cfg(feature = "cli")]
 pub struct ForcCliResult<T> {
     result: ForcResult<T>,
 }
@@ -56,6 +94,8 @@ pub struct ForcCliResult<T> {
 #[derive(Debug)]
 pub struct ForcError {
     error: anyhow::Error,
+    // Retain the exit code even when CLI reporting is disabled.
+    #[cfg_attr(not(feature = "cli"), allow(dead_code))]
     exit_code: u8,
 }
 
@@ -112,6 +152,7 @@ impl Display for ForcError {
     }
 }
 
+#[cfg(feature = "cli")]
 impl<T> Termination for ForcCliResult<T> {
     fn report(self) -> std::process::ExitCode {
         match self.result {
@@ -124,6 +165,7 @@ impl<T> Termination for ForcCliResult<T> {
     }
 }
 
+#[cfg(feature = "cli")]
 impl<T> From<ForcResult<T>> for ForcCliResult<T> {
     fn from(value: ForcResult<T>) -> Self {
         Self { result: value }
@@ -157,6 +199,7 @@ pub fn lock_path(manifest_dir: &Path) -> PathBuf {
     manifest_dir.join(constants::LOCK_FILE_NAME)
 }
 
+#[cfg(feature = "restricted")]
 pub fn validate_project_name(name: &str) -> Result<()> {
     restricted::is_valid_project_name_format(name)?;
     validate_name(name, "project name")
@@ -165,6 +208,7 @@ pub fn validate_project_name(name: &str) -> Result<()> {
 // Using (https://github.com/rust-lang/cargo/blob/489b66f2e458404a10d7824194d3ded94bc1f4e4/src/cargo/util/toml/mod.rs +
 // https://github.com/rust-lang/cargo/blob/489b66f2e458404a10d7824194d3ded94bc1f4e4/src/cargo/ops/cargo_new.rs) for reference
 
+#[cfg(feature = "restricted")]
 pub fn validate_name(name: &str, use_case: &str) -> Result<()> {
     // if true returns formatted error
     restricted::contains_invalid_char(name, use_case)?;
@@ -236,6 +280,7 @@ pub fn git_checkouts_directory() -> PathBuf {
 ///
 /// Note: This has nothing to do with `Forc.lock` files, rather this is about fd locks for
 /// coordinating access to particular paths (e.g. git checkout directories).
+#[cfg(feature = "fs-locking")]
 fn fd_lock_path<X: AsRef<Path>>(path: X) -> PathBuf {
     const LOCKS_DIR_NAME: &str = ".locks";
     const LOCK_EXT: &str = "forc-lock";
@@ -248,6 +293,7 @@ fn fd_lock_path<X: AsRef<Path>>(path: X) -> PathBuf {
 
 /// Hash the path to produce a file-system friendly file name.
 /// Append the file stem for improved readability.
+#[cfg(feature = "fs-locking")]
 fn hash_path<X: AsRef<Path>>(path: X) -> String {
     let path = path.as_ref();
     let mut hasher = hash_map::DefaultHasher::default();
@@ -263,6 +309,7 @@ fn hash_path<X: AsRef<Path>>(path: X) -> String {
 /// Create an advisory lock over the given path.
 ///
 /// See [fd_lock_path] for details.
+#[cfg(feature = "fs-locking")]
 pub fn path_lock<X: AsRef<Path>>(path: X) -> Result<fd_lock::RwLock<File>> {
     let lock_path = fd_lock_path(path);
     let lock_dir = lock_path
@@ -273,6 +320,7 @@ pub fn path_lock<X: AsRef<Path>>(path: X) -> Result<fd_lock::RwLock<File>> {
     Ok(fd_lock::RwLock::new(lock_file))
 }
 
+#[cfg(feature = "diagnostics")]
 pub fn program_type_str(ty: &TreeType) -> &'static str {
     match ty {
         TreeType::Script => "script",
@@ -282,6 +330,7 @@ pub fn program_type_str(ty: &TreeType) -> &'static str {
     }
 }
 
+#[cfg(feature = "diagnostics")]
 pub fn print_compiling(ty: Option<&TreeType>, name: &str, src: &dyn std::fmt::Display) {
     // NOTE: We can only print the program type if we can parse the program, so
     // program type must be optional.
@@ -295,6 +344,7 @@ pub fn print_compiling(ty: Option<&TreeType>, name: &str, src: &dyn std::fmt::Di
     );
 }
 
+#[cfg(feature = "diagnostics")]
 pub fn print_infos(source_engine: &SourceEngine, terse_mode: bool, infos: &[CompileInfo]) {
     if infos.is_empty() {
         return;
@@ -307,6 +357,7 @@ pub fn print_infos(source_engine: &SourceEngine, terse_mode: bool, infos: &[Comp
     }
 }
 
+#[cfg(feature = "diagnostics")]
 pub fn print_warnings(
     source_engine: &SourceEngine,
     terse_mode: bool,
@@ -338,6 +389,7 @@ pub fn print_warnings(
     ));
 }
 
+#[cfg(feature = "diagnostics")]
 pub fn print_on_failure(
     source_engine: &SourceEngine,
     terse_mode: bool,
@@ -389,6 +441,7 @@ pub fn print_on_failure(
 ///
 /// To ensure the same styling of printed warnings and errors across all the tools,
 /// always use this function to create [Renderer]s,
+#[cfg(feature = "diagnostics")]
 pub fn create_diagnostics_renderer() -> Renderer {
     // For the diagnostic messages we use bold and bright colors.
     // Note that for the summaries of warnings and errors we use
@@ -406,6 +459,7 @@ pub fn create_diagnostics_renderer() -> Renderer {
         )
 }
 
+#[cfg(feature = "diagnostics")]
 pub fn format_diagnostic(diagnostic: &Diagnostic) {
     /// Temporary switch for testing the feature.
     /// Keep it false until we decide to fully support the diagnostic codes.
@@ -527,6 +581,7 @@ pub fn format_diagnostic(diagnostic: &Diagnostic) {
     }
 }
 
+#[cfg(feature = "diagnostics")]
 fn construct_slice(labels: Vec<&Label>) -> Slice {
     debug_assert!(
         !labels.is_empty(),
@@ -592,6 +647,7 @@ fn construct_slice(labels: Vec<&Label>) -> Slice {
     }
 }
 
+#[cfg(feature = "diagnostics")]
 fn label_type_to_annotation_type(label_type: LabelType) -> AnnotationType {
     match label_type {
         LabelType::Info => AnnotationType::Info,
@@ -609,6 +665,7 @@ fn label_type_to_annotation_type(label_type: LabelType) -> AnnotationType {
 ///
 /// The library we use doesn't handle auto-windowing and line numbers, so we must manually
 /// calculate the line numbers and match them up with the input window. It is a bit fiddly.
+#[cfg(feature = "diagnostics")]
 fn construct_code_snippet<'a>(span: &Span, input: &'a str) -> (&'a str, usize, usize) {
     // how many lines to prepend or append to the highlighted region in the window
     const NUM_LINES_BUFFER: usize = 2;
@@ -662,6 +719,7 @@ fn construct_code_snippet<'a>(span: &Span, input: &'a str) -> (&'a str, usize, u
 ///
 /// The library we use doesn't handle auto-windowing and line numbers, so we must manually
 /// calculate the line numbers and match them up with the input window. It is a bit fiddly.
+#[cfg(feature = "diagnostics")]
 fn construct_window<'a>(
     start: &mut LineCol,
     end: LineCol,
@@ -723,6 +781,7 @@ fn construct_window<'a>(
 }
 
 #[test]
+#[cfg(feature = "diagnostics")]
 fn ok_construct_window() {
     fn t(
         start_line: usize,
