@@ -385,6 +385,7 @@ impl DisplayWithEngines for TyDecl {
                     match mutability {
                         VariableMutability::Mutable => builder.push_str("mut"),
                         VariableMutability::RefMutable => builder.push_str("ref mut"),
+                        VariableMutability::RefImmutable => builder.push_str("ref"),
                         VariableMutability::Immutable => {}
                     }
                     builder.push_str(name.as_str());
@@ -441,6 +442,7 @@ impl DebugWithEngines for TyDecl {
                     match mutability {
                         VariableMutability::Mutable => builder.push_str("mut"),
                         VariableMutability::RefMutable => builder.push_str("ref mut"),
+                        VariableMutability::RefImmutable => builder.push_str("ref"),
                         VariableMutability::Immutable => {}
                     }
                     builder.push_str(name.as_str());
