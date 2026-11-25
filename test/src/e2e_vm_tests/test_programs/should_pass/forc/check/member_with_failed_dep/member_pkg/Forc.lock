@@ -1,0 +1,8 @@
+[[package]]
+name = "dep_pkg"
+source = "path+from-root-878BFF58B026C208"
+
+[[package]]
+name = "member_pkg"
+source = "member"
+dependencies = ["dep_pkg"]

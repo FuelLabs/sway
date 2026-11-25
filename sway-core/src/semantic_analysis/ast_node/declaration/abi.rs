@@ -5,7 +5,7 @@ use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
     ast_elements::type_parameter::GenericTypeParameter,
-    decl_engine::{parsed_id::ParsedDeclId, DeclEngineInsert, DeclId},
+    decl_engine::{parsed_id::ParsedDeclId, DeclEngineInsert, DeclId, ReservedDeclId},
     language::ty::{TyAbiDecl, TyFunctionDecl},
     namespace::{IsExtendingExistingImpl, IsImplInterfaceSurface, IsImplSelf},
     semantic_analysis::{
@@ -57,6 +57,7 @@ impl ty::TyAbiDecl {
         handler: &Handler,
         ctx: TypeCheckContext,
         abi_decl: &AbiDeclaration,
+        reserved_abi_decl_id: &ReservedDeclId<ty::TyAbiDecl>,
     ) -> Result<Self, ErrorEmitted> {
         let engines = ctx.engines();
         let AbiDeclaration {
@@ -192,10 +193,13 @@ impl ty::TyAbiDecl {
                 }
 
                 // Type check the items.
+                let abi_ty_decl = ty::TyDecl::AbiDecl(ty::AbiDecl {
+                    decl_id: reserved_abi_decl_id.id(),
+                });
                 let mut new_items = vec![];
                 for method_id in methods.iter() {
                     let method = engines.pe().get_function(method_id);
-                    let method = ty::TyFunctionDecl::type_check(
+                    let mut method = ty::TyFunctionDecl::type_check(
                         handler,
                         ctx.by_ref(),
                         &method,
@@ -204,6 +208,9 @@ impl ty::TyAbiDecl {
                         Some(self_type_param.type_id),
                     )
                     .unwrap_or_else(|_| ty::TyFunctionDecl::error(&method));
+                    // The provided method is born with its `implementing_type`
+                    // already set, pointing to the reserved ABI decl.
+                    method.set_implementing_type(abi_ty_decl.clone());
                     error_on_shadowing_superabi_method(&method.name, ctx);
                     for param in method.parameters.iter() {
                         if param.is_reference || param.is_mutable {

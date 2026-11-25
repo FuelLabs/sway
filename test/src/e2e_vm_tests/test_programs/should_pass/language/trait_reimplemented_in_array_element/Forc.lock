@@ -1,0 +1,8 @@
+[[package]]
+name = "std"
+source = "path+from-root-474ED82CFD217591"
+
+[[package]]
+name = "trait_reimplemented_in_array_element"
+source = "member"
+dependencies = ["std"]

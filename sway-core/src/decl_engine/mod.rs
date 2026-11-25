@@ -18,6 +18,7 @@ pub(crate) mod parsed_engine;
 pub mod parsed_id;
 pub(crate) mod r#ref;
 pub(crate) mod replace_decls;
+pub mod reserved_id;
 
 use std::collections::BTreeMap;
 
@@ -29,6 +30,7 @@ pub(crate) use mapping::*;
 pub use parsed_engine::*;
 pub use r#ref::*;
 pub(crate) use replace_decls::*;
+pub use reserved_id::*;
 use sway_types::Ident;
 
 use crate::{

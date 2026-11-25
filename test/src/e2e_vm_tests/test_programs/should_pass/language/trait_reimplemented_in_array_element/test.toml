@@ -1,0 +1,5 @@
+# TODO - Move this test to `should_fail` once
+#        https://github.com/FuelLabs/sway/issues/7759 is fixed.
+#        See the comments in `src/main.sw` for the details.
+category = "compile"
+expected_warnings = 1 # The DCA warning for the never called `tf`.

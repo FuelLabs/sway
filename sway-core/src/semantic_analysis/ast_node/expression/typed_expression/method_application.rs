@@ -10,7 +10,7 @@ use crate::{
     },
     semantic_analysis::*,
     type_system::*,
-    HasChanges,
+    HasChanges, SpeculationHandler,
 };
 use ast_elements::{
     type_argument::GenericTypeArgument,
@@ -42,9 +42,9 @@ pub(crate) fn type_check_method_application(
     let engines = ctx.engines();
     let coercion_check = UnifyCheck::coercion(engines);
 
-    // type check the function arguments (1st pass)
+    // Type check the function arguments (1st pass).
     // Some arguments may fail on this first pass because they may require the type_annotation to the parameter type.
-    // If they fail the args_opt_buf will contain a None value.
+    // If they fail the `args_opt_buf` will contain a `None` value.
     let mut args_opt_buf = VecDeque::new();
     for (index, arg) in arguments.iter().enumerate() {
         let ctx = ctx
@@ -52,10 +52,14 @@ pub(crate) fn type_check_method_application(
             .with_help_text("")
             .with_type_annotation(type_engine.new_unknown());
 
-        // Ignore errors in method parameters
+        // Ignore errors in method parameters.
         // On the second pass we will throw the errors if they persist.
-        let arg_handler = Handler::default();
-        let arg_opt = ty::TyExpression::type_check(&arg_handler, ctx, arg).ok();
+        // The first pass is a speculation. An argument whose first pass failed
+        // is guaranteed to be re-type-checked in the second pass below, with the
+        // real handler and the resolved parameter type annotation.
+        let (arg_opt, arg_handler) = Handler::speculate(engines, |arg_handler| {
+            ty::TyExpression::type_check(arg_handler, ctx, arg).ok()
+        });
 
         let has_errors = arg_handler.has_errors();
         let has_numerics = arg_opt
@@ -70,7 +74,7 @@ pub(crate) fn type_check_method_application(
         let needs_second_pass = has_errors || has_numerics;
 
         if index == 0 {
-            // We want to emit errors in the self parameter and ignore TraitConstraintNotSatisfied with Placeholder
+            // We want to emit errors in the self parameter and ignore `TraitConstraintNotSatisfied` with `Placeholder`
             // which may be recoverable on the second pass.
             arg_handler.retain_err(|e| {
                 if let CompileError::TraitConstraintNotSatisfied { type_id, .. } = e {
@@ -88,7 +92,7 @@ pub(crate) fn type_check_method_application(
         args_opt_buf.push_back((arg_opt, arg_handler, needs_second_pass));
     }
 
-    // resolve the method name to a typed function declaration and type_check
+    // Resolve the method name to a typed function declaration and type-check.
     let arguments_types = args_opt_buf
         .iter()
         .map(|(arg, _, _has_errors)| match arg {

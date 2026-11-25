@@ -84,6 +84,64 @@ impl Engines {
         }
     }
 
+    /// Returns true if the engines contain residuals. Residuals are
+    /// leftovers of constructions that were started and never finished.
+    ///
+    /// During a package type checking, unfinished constructions are a regular
+    /// part of the compilation. E.g., the decl slots that are reserved and not
+    /// yet filled and frozen. After a _successfully_ finished package type
+    /// checking, though, the engines must be residual-free. E.g., every
+    /// reserved decl slot must be filled and frozen. Residuals can be left
+    /// behind only by a package type check that has failed or was canceled.
+    ///
+    /// Note that the residuals of failed speculations are not residuals in
+    /// this sense. They are forgotten, and thus already cleaned up (see
+    /// [SpeculationHandler][crate::SpeculationHandler]).
+    pub fn has_residuals(&self) -> bool {
+        // Currently, only the `DeclEngine` can have residuals in the form of
+        // open decl slots.
+        self.decl_engine.has_open_decl_slots()
+    }
+
+    /// Forgets all the residuals currently in the engines (see
+    /// [Engines::has_residuals]).
+    ///
+    /// Residuals can be left behind only by a package type check that has
+    /// failed or was canceled on the same engines. Such residuals are
+    /// abandoned and no one will ever pick them up again. This method is called
+    /// at the beginning of every package type check to clean them up (see
+    /// [parsed_to_ast][crate::parsed_to_ast]).
+    pub(crate) fn forget_abandoned_residuals(&self) {
+        let cleanup = ResidualsCleanup(());
+
+        // Currently, only the `DeclEngine` needs such a clean-up,
+        // where the abandoned open decl slots must be forgotten.
+        self.decl_engine.forget_abandoned_open_slots(&cleanup);
+    }
+
+    /// Runs `f` and forgets all the residuals (see [Engines::has_residuals])
+    /// that `f` leaves behind in the engines.
+    ///
+    /// This is the residuals clean-up of a speculation boundary, and
+    /// [SpeculationHandler::speculate][crate::SpeculationHandler::speculate]
+    /// must be its only caller. Run speculations within the
+    /// [SpeculationHandler][crate::SpeculationHandler] API. Never call this
+    /// method directly.
+    pub(crate) fn forget_residuals_during<T>(&self, f: impl FnOnce() -> T) -> T {
+        let cleanup = ResidualsCleanup(());
+
+        // Currently, only the `DeclEngine` needs such a clean-up. The decl
+        // slots that a failed speculation leaves open get forgotten.
+        let decl_slots_mark = self.decl_engine.mark_open_slots(&cleanup);
+
+        let result = f();
+
+        self.decl_engine
+            .forget_open_slots_since(decl_slots_mark, &cleanup);
+
+        result
+    }
+
     /// Helps out some `thing: T` by adding `self` as context.
     pub fn help_out<T>(&self, thing: T) -> WithEngines<'_, T> {
         WithEngines {
@@ -92,6 +150,18 @@ impl Engines {
         }
     }
 }
+
+/// A witness that a residuals clean-up is driven by the [Engines].
+///
+/// The individual engines implement their parts of the residuals clean-up
+/// protocol, but the clean-up itself is the sole responsibility of the [Engines]
+/// (see [Engines::forget_abandoned_residuals] and [Engines::forget_residuals_during]).
+///
+/// The engines' clean-up methods require a [ResidualsCleanup] witness, and
+/// only the [Engines] can construct one. This makes the [Engines]' residuals
+/// clean-up methods structurally the only possible callers
+/// of the engines' clean-up methods.
+pub(crate) struct ResidualsCleanup(());
 
 #[derive(Clone, Copy)]
 pub struct WithEngines<'a, T> {

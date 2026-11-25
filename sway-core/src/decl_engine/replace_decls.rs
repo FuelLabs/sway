@@ -2,7 +2,7 @@ use sway_error::handler::{ErrorEmitted, Handler};
 
 use crate::{
     engine_threading::Engines,
-    language::ty::{self, TyDecl, TyExpression},
+    language::ty::{TyDecl, TyExpression},
     semantic_analysis::TypeCheckContext,
     HasChanges,
 };
@@ -47,10 +47,6 @@ impl<T: ReplaceDecls + Clone> ReplaceDecls for std::sync::Arc<T> {
             Ok(r)
         }
     }
-}
-
-pub(crate) trait ReplaceFunctionImplementingType {
-    fn replace_implementing_type(&mut self, engines: &Engines, implementing_type: ty::TyDecl);
 }
 
 pub(crate) trait UpdateConstantExpression {

@@ -4,7 +4,7 @@ use crate::{
         parsed::CodeBlock,
         ty::{self, TyAstNodeContent, TyCodeBlock},
     },
-    HasChanges,
+    HasChanges, SpeculationHandler,
 };
 
 impl ty::TyCodeBlock {
@@ -64,19 +64,28 @@ impl ty::TyCodeBlock {
             .items
             .clear_symbols_unique_while_collecting_unifications();
 
-        // We are typechecking the code block AST nodes twice.
+        // We are type-checking the code block AST nodes twice.
         // The first pass does all the unifications to the variables types.
         // In the second pass we use the previous_namespace on variable declaration to unify directly with the result of the first pass.
-        // This is required to fix the test case numeric_type_propagation and issue #6371
-        ctx.by_ref()
-            .with_collecting_unifications()
-            .with_code_block_first_pass(true)
-            .scoped(handler, Some(code_block.span()), |ctx| {
-                code_block.contents.iter().for_each(|node| {
-                    ty::TyAstNode::type_check(&Handler::default(), ctx.by_ref(), node).ok();
+        // This is required to fix the test case numeric_type_propagation and the issue #6371.
+        //
+        // The first pass is a speculation whose results and errors are deliberately
+        // discarded. Every node is re-type-checked in the second pass, with the
+        // real handler. Each node is type-checked with its own throwaway
+        // handler, so that the errors of one node do not influence the type
+        // checking of the others.
+        handler.discard(ctx.engines, |speculation_handler| {
+            let _ = ctx
+                .by_ref()
+                .with_collecting_unifications()
+                .with_code_block_first_pass(true)
+                .scoped(speculation_handler, Some(code_block.span()), |ctx| {
+                    code_block.contents.iter().for_each(|node| {
+                        ty::TyAstNode::type_check(&Handler::default(), ctx.by_ref(), node).ok();
+                    });
+                    Ok(())
                 });
-                Ok(())
-            })?;
+        });
 
         ctx.engines.te().reapply_unifications(ctx.engines(), 0);
 

@@ -1,13 +1,13 @@
 use crate::{
     decl_engine::{
         DeclEngineInsert, DeclRefConstant, DeclRefFunction, DeclRefTraitFn, DeclRefTraitType,
-        MaterializeConstGenerics, ReplaceFunctionImplementingType,
+        MaterializeConstGenerics,
     },
     engine_threading::*,
     has_changes,
     language::{
         parsed::{self, TraitDeclaration},
-        ty::{TyDecl, TyDeclParsedType},
+        ty::TyDeclParsedType,
         CallPath, Visibility,
     },
     semantic_analysis::{
@@ -374,22 +374,6 @@ impl SubstTypes for TyTraitItem {
             TyTraitItem::Fn(fn_decl) => fn_decl.subst(ctx),
             TyTraitItem::Constant(const_decl) => const_decl.subst(ctx),
             TyTraitItem::Type(type_decl) => type_decl.subst(ctx),
-        }
-    }
-}
-
-impl ReplaceFunctionImplementingType for TyTraitItem {
-    fn replace_implementing_type(&mut self, engines: &Engines, implementing_type: TyDecl) {
-        match self {
-            TyTraitItem::Fn(decl_ref) => {
-                decl_ref.replace_implementing_type(engines, implementing_type)
-            }
-            TyTraitItem::Constant(_decl_ref) => {
-                // ignore, only needed for functions
-            }
-            TyTraitItem::Type(_decl_ref) => {
-                // ignore, only needed for functions
-            }
         }
     }
 }

@@ -1,0 +1,38 @@
+---
+source: test/src/snapshot/mod.rs
+---
+`forc check` must succeed: the member package is valid, and the decl slots left open
+by the failed type check of the dependency must not poison the member's type check.
+
+> forc check --path test/src/e2e_vm_tests/test_programs/should_pass/forc/check/member_with_failed_dep/member_pkg
+exit status: 0
+output:
+
+`forc build` must fail: it witnesses that the dependency indeed fails to compile.
+
+> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/forc/check/member_with_failed_dep/member_pkg
+exit status: 1
+output:
+    Building test/src/e2e_vm_tests/test_programs/should_pass/forc/check/member_with_failed_dep/member_pkg
+   Compiling library dep_pkg (test/src/e2e_vm_tests/test_programs/should_pass/forc/check/member_with_failed_dep/dep_pkg)
+error: Trait is already implemented for type
+  --> test/src/e2e_vm_tests/test_programs/should_pass/forc/check/member_with_failed_dep/dep_pkg/src/lib.sw:1:1
+   |
+...  |
+15 | | }
+   | |_- info: This is the already existing implementation of "T" for "S".
+16 |   
+17 |   // The duplicated trait impl fails the construction of the impl declaration,
+18 |   // and leaves its reserved decl slot open in the decl engine shared with
+19 |   // the member package.
+...  |
+23 | |     }
+24 | | }
+   | |_^ Trait "dep_pkg::T" is already implemented for type "dep_pkg::S".
+   |
+   = help: In Sway, there can be at most one implementation of a trait for any given type.
+   = help: This property is called "trait coherence".
+____
+
+  Aborting due to 1 error.
+error: Failed to compile dep_pkg
