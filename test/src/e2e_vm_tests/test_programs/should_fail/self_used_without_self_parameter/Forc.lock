@@ -1,0 +1,3 @@
+[[package]]
+name = 'self_used_without_self_parameter'
+source = 'member'
