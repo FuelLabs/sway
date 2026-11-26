@@ -1,0 +1,8 @@
+[[package]]
+name = "std"
+source = "path+from-root-6727D9AAD62BD14B"
+
+[[package]]
+name = "sway_test"
+source = "member"
+dependencies = ["std"]
