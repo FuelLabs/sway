@@ -1,0 +1,8 @@
+[[package]]
+name = "configurable_initializer_dependency_nested"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-68FFA8505FCAC666"
