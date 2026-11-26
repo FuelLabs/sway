@@ -1,0 +1,9 @@
+[[package]]
+name = "status_clear_across_join"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-F1D729A4BC912A6D"
+

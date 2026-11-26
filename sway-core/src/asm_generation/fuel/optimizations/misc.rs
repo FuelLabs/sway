@@ -1,4 +1,5 @@
 use super::super::abstract_instruction_set::AbstractInstructionSet;
+use super::super::analyses::liveness_analysis;
 
 use crate::asm_lang::{
     virtual_register::ConstantRegister, JumpType, Op, OrganizationalOp, VirtualOp, VirtualRegister,
@@ -28,13 +29,10 @@ impl AbstractInstructionSet {
             })
             .collect();
 
-        // Replace the dead jumps with NOPs, as it's cheaper.
-        for idx in dead_jumps {
-            self.ops[idx] = Op {
-                opcode: Either::Left(VirtualOp::NOOP),
-                comment: "remove redundant jump operation".into(),
-                owning_span: None,
-            };
+        // Remove dead jumps outright. Replacing one with a NOOP would add an
+        // observable `$of`/`$err` clear that the original jump did not perform.
+        for idx in dead_jumps.into_iter().rev() {
+            self.ops.remove(idx);
         }
 
         self
@@ -99,9 +97,9 @@ impl AbstractInstructionSet {
         mut log: impl FnMut(&str),
     ) -> AbstractInstructionSet {
         let mut new_ops = Vec::with_capacity(self.ops.len());
+        let live_out = liveness_analysis(&self.ops, false);
 
-        let mut ops = self.ops.iter().peekable();
-        while let Some(op) = ops.next() {
+        for (idx, op) in self.ops.iter().enumerate() {
             let remove = match &op.opcode {
                 Either::Left(VirtualOp::NOOP) => true,
                 Either::Left(VirtualOp::MOVE(a, b)) => a == b,
@@ -112,17 +110,13 @@ impl AbstractInstructionSet {
                 _ => false,
             };
 
-            // We also need to be sure op is redundant regarding const registers.
+            // Instructions such as NOOP and self-MOVE update `$of` and `$err`.
+            // Keep them whenever one of those definitions is live on a successor path.
             let remove = remove
-                && ops
-                    .peek()
-                    .map(|next_op| {
-                        op.def_const_registers()
-                            .intersection(&next_op.use_registers())
-                            .count()
-                            == 0
-                    })
-                    .unwrap_or(true);
+                && op
+                    .def_const_registers()
+                    .iter()
+                    .all(|reg| !live_out[idx].contains(*reg));
 
             if !remove {
                 log(&format!("keeping: {}\n", op));
