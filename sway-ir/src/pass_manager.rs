@@ -196,7 +196,7 @@ impl Default for Options {
             print_metadata: false,
             print_passes: HashSet::default(),
             force_verify_ir: false,
-            rounds: 2,
+            rounds: 16,
             log: false,
         }
     }
