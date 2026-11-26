@@ -1,0 +1,8 @@
+category = "fail"
+
+# check: $()value::<A>()
+# check: $()"const generics" are not supported here.
+# check: $()value::<NotAConst>()
+# check: $()"const generics" are not supported here.
+# check: $()value::<private_constants::A>()
+# check: $()Symbol "A" is private.

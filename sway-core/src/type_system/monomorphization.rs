@@ -1,5 +1,9 @@
 use crate::{
-    decl_engine::{DeclEngineInsert, MaterializeConstGenerics},
+    ast_elements::{
+        type_argument::GenericConstArgument,
+        type_parameter::{ConstGenericExpr, ConstGenericExprTyDecl},
+    },
+    decl_engine::{DeclEngineGet, DeclEngineInsert, MaterializeConstGenerics},
     language::{
         ty::{self, TyExpression},
         CallPath,
@@ -119,8 +123,88 @@ where
 
             let params = value.type_parameters();
             let args = type_arguments.iter_mut();
+            let const_only = params
+                .iter()
+                .all(|parameter| matches!(parameter, TypeParameter::Const(_)));
 
             for (param, arg) in params.iter().zip(args) {
+                let call_path = match (&param, &arg) {
+                    (TypeParameter::Const(_), GenericArgument::Type(arg)) => {
+                        let Some(tree) = arg.call_path_tree.as_ref() else {
+                            return Err(handler.emit_err(
+                                CompileError::ConstGenericNotSupportedHere {
+                                    span: arg.span.clone(),
+                                },
+                            ));
+                        };
+                        Some(tree.qualified_call_path.call_path.clone())
+                    }
+                    (_, GenericArgument::Const(arg)) => match &arg.expr {
+                        ConstGenericExpr::AmbiguousVariableExpression { ident, decl: None } => {
+                            Some(CallPath {
+                                prefixes: vec![],
+                                suffix: ident.clone(),
+                                callpath_type: crate::language::CallPathType::Ambiguous,
+                            })
+                        }
+                        _ => None,
+                    },
+                    _ => None,
+                };
+                if let Some(mut call_path) = call_path {
+                    if !const_only {
+                        call_path.prefixes.clear();
+                        call_path.callpath_type = crate::language::CallPathType::Ambiguous;
+                    }
+                    let ident = call_path.suffix.clone();
+                    // A const argument can name either a generic parameter or a constant
+                    // that shadows one. Keep the resolved declaration for deferred arguments.
+                    let decl = crate::semantic_analysis::type_resolve::resolve_call_path(
+                        handler,
+                        engines,
+                        namespace,
+                        mod_path,
+                        &call_path,
+                        self_type,
+                        if const_only {
+                            VisibilityCheck::Yes
+                        } else {
+                            VisibilityCheck::No
+                        },
+                    )
+                    .map(|d| d.expect_typed())?;
+                    if !const_only {
+                        // Preserve mixed type/const instantiation until caller-owned types
+                        // can be distinguished from the callee's const parameters.
+                        continue;
+                    }
+                    let (decl, value) = match decl {
+                        ty::TyDecl::ConstGenericDecl(decl) => {
+                            let value = engines.de().get(&decl.decl_id).value.clone();
+                            (ConstGenericExprTyDecl::ConstGenericDecl(decl), value)
+                        }
+                        ty::TyDecl::ConstantDecl(decl) => {
+                            let value = engines.de().get(&decl.decl_id).value.clone();
+                            (ConstGenericExprTyDecl::ConstantDecl(decl), value)
+                        }
+                        _ => {
+                            return Err(handler.emit_err(
+                                CompileError::ConstGenericNotSupportedHere { span: ident.span() },
+                            ));
+                        }
+                    };
+                    let expr = match value.and_then(|value| value.extract_literal_value()) {
+                        Some(crate::language::Literal::U64(val)) => ConstGenericExpr::Literal {
+                            val: val as usize,
+                            span: ident.span(),
+                        },
+                        _ => ConstGenericExpr::AmbiguousVariableExpression {
+                            ident,
+                            decl: Some(decl),
+                        },
+                    };
+                    *arg = GenericArgument::Const(GenericConstArgument { expr });
+                }
                 match (param, arg) {
                     (TypeParameter::Type(_), GenericArgument::Type(arg)) => {
                         arg.type_id = resolve_type(
@@ -138,51 +222,8 @@ where
                         )
                         .unwrap_or_else(|err| engines.te().id_of_error_recovery(err));
                     }
-                    (TypeParameter::Const(_), GenericArgument::Type(arg)) => {
-                        let suffix = arg
-                            .call_path_tree
-                            .as_ref()
-                            .unwrap()
-                            .qualified_call_path
-                            .call_path
-                            .suffix
-                            .clone();
-                        let _ = crate::semantic_analysis::type_resolve::resolve_call_path(
-                            handler,
-                            engines,
-                            namespace,
-                            mod_path,
-                            &CallPath {
-                                prefixes: vec![],
-                                suffix,
-                                callpath_type: crate::language::CallPathType::Ambiguous,
-                            },
-                            self_type,
-                            VisibilityCheck::No,
-                        )
-                        .map(|d| d.expect_typed())?;
-                    }
-                    (_, GenericArgument::Const(arg)) => {
-                        match &arg.expr {
-                            crate::ast_elements::type_parameter::ConstGenericExpr::Literal { ..} => {},
-                            crate::ast_elements::type_parameter::ConstGenericExpr::AmbiguousVariableExpression { ident, .. } => {
-                                let _ = crate::semantic_analysis::type_resolve::resolve_call_path(
-                                    handler,
-                                    engines,
-                                    namespace,
-                                    mod_path,
-                                    &CallPath {
-                                        prefixes: vec![],
-                                        suffix: ident.clone(),
-                                        callpath_type: crate::language::CallPathType::Ambiguous,
-                                    },
-                                    self_type,
-                                    VisibilityCheck::No,
-                                )
-                                .map(|d| d.expect_typed())?;
-                            },
-                        }
-                    }
+                    (TypeParameter::Const(_), GenericArgument::Type(_)) => {}
+                    (_, GenericArgument::Const(_)) => {}
                 }
             }
 
@@ -195,14 +236,19 @@ where
                         params.push(p.type_id);
                         args.push(a.type_id);
                     }
-                    (TypeParameter::Const(p), GenericArgument::Const(a)) => {
+                    (TypeParameter::Const(p), GenericArgument::Const(a))
+                        if matches!(a.expr, ConstGenericExpr::Literal { .. }) =>
+                    {
                         consts.insert(
                             p.name.as_str().to_string(),
                             a.expr.to_ty_expression(engines),
                         );
                     }
-                    // TODO const generic was not materialized yet
-                    (TypeParameter::Const(_), GenericArgument::Type(_)) => {}
+                    // Symbolic arguments are materialized when their caller is specialized.
+                    (
+                        TypeParameter::Const(_),
+                        GenericArgument::Const(_) | GenericArgument::Type(_),
+                    ) => {}
                     x => todo!("{x:?}"),
                 }
             }

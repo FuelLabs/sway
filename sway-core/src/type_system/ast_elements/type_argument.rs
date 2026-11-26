@@ -1,4 +1,4 @@
-use super::type_parameter::ConstGenericExpr;
+use super::type_parameter::{ConstGenericExpr, ConstGenericExprTyDecl};
 use crate::{
     decl_engine::MaterializeConstGenerics, engine_threading::*, language::CallPathTree,
     type_system::priv_prelude::*, HasChanges,
@@ -316,7 +316,9 @@ impl MaterializeConstGenerics for GenericArgument {
                             decl.materialize_const_generics(engines, handler, name, value)?;
                     }
 
-                    if ident.as_str() == name {
+                    if ident.as_str() == name
+                        && !matches!(decl, Some(ConstGenericExprTyDecl::ConstantDecl(_)))
+                    {
                         arg.expr = ConstGenericExpr::Literal {
                             val: value
                                 .extract_literal_value()
