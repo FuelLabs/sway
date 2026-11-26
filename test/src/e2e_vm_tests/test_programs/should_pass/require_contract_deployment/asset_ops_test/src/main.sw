@@ -14,7 +14,7 @@ const FUEL_COIN_CONTRACT_ID = 0xcbd025f025b53274a9e2b05aa7b47f3d92353b545ba37667
 #[cfg(experimental_new_encoding = false)]
 const BALANCE_CONTRACT_ID = 0xf6cd545152ac83225e8e7df2efb5c6fa6e37bc9b9e977b5ea8103d28668925df;
 #[cfg(experimental_new_encoding = true)]
-const BALANCE_CONTRACT_ID = 0xc60544fda418f8588eb4bdd0bff722ba84f900f6576bee1ab47be6e55533db50; // AUTO-CONTRACT-ID ../../test_contracts/balance_test_contract --release
+const BALANCE_CONTRACT_ID = 0xca92265abffea2ccf4e1e476cc407b0a39f0f48a3741ba9c89f667e0ebcab0e6; // AUTO-CONTRACT-ID ../../test_contracts/balance_test_contract --release
 
 fn main() -> bool {
     let default_gas = 1_000_000_000_000;

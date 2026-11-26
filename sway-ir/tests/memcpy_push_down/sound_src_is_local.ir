@@ -1,0 +1,71 @@
+// CORRECTNESS: source need not be an argument — another local works the same.
+// `src` is filled with field stores (not a `mem_copy_val` candidate) so the
+// only push-down candidate is `order_copy ← src`, and the read arm keeps `src`.
+//
+// ```sway
+// fn main(flag: bool, order: Order) -> u64 {
+//     let mut src = Order { a: order.a, prev: order.prev };
+//     let mut order_copy = src;
+//     if flag {
+//         order_copy.prev = 42;
+//         consume_read_only(order_copy)
+//     } else {
+//         consume_read_only(order_copy)
+//     }
+// }
+// ```
+//
+// Expected:
+//   A = `order_copy ← src` disappears,
+//   B = write arm materializes from `src` before the store,
+//   C = read arm calls consume on `src`.
+script {
+    entry fn main(flag: bool, order: __ptr { u64, u64 }) -> u64 {
+        local mut { u64, u64 } src
+        local mut { u64, u64 } order_copy
+
+        entry(flag: bool, order: __ptr { u64, u64 }):
+        // Initialize `src` from `order` without a mem_copy_val candidate.
+        v0 = get_local __ptr { u64, u64 }, src
+        v1 = const u64 0
+        v2 = get_elem_ptr order, __ptr u64, v1
+        v3 = load v2
+        v4 = get_elem_ptr v0, __ptr u64, v1
+        store v3 to v4
+        v5 = const u64 1
+        v6 = get_elem_ptr order, __ptr u64, v5
+        v7 = load v6
+        v8 = get_elem_ptr v0, __ptr u64, v5
+        store v7 to v8
+        v9 = get_local __ptr { u64, u64 }, order_copy
+        v10 = get_local __ptr { u64, u64 }, src
+        mem_copy_val v9, v10 // <------------------ A (local → local)
+        cbr flag, block_write(), block_read()
+
+        block_write():
+        v11 = get_local __ptr { u64, u64 }, order_copy
+        v12 = const u64 1
+        v13 = get_elem_ptr v11, __ptr u64, v12
+        v14 = const u64 42
+        store v14 to v13 // <------------------ B
+        v15 = get_local __ptr { u64, u64 }, order_copy
+        v16 = call consume_read_only(v15)
+        br block_join(v16)
+
+        block_read():
+        v17 = get_local __ptr { u64, u64 }, order_copy
+        v18 = call consume_read_only(v17) // <------------------ C
+        br block_join(v18)
+
+        block_join(v19: u64):
+        ret u64 v19
+    }
+
+    fn consume_read_only(order: __ptr { u64, u64 }) -> u64 {
+        entry(order: __ptr { u64, u64 }):
+        v0 = const u64 0
+        v1 = get_elem_ptr order, __ptr u64, v0
+        v2 = load v1
+        ret u64 v2
+    }
+}
