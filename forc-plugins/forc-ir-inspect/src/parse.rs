@@ -1,117 +1,33 @@
-//! ```
-//! > cargo r --bin inspect -r -- --help
-//! Reads the output of `forc build --ir all` and prints diffs, stats and other helpful information
-//!
-//! Usage: inspect [OPTIONS] <INPUT_PATH>
-//!
-//! Arguments:
-//!   <INPUT_PATH>  Path to the input file (output of `forc build --ir all`)
-//!
-//! Options:
-//!       --filter-fn <FILTER_FN>  Filter in functions whose name contains one of the given substrings (comma separated)
-//!       --print <PRINT>          Comma separated list of items to print [possible values: ir, diff, with-md, without-md,
-//!                                with-version, without-version, source]
-//!   -h, --help                   Print help
-//! ```
+//! Parsing and IR text utilities shared by classic and TUI modes.
 
 use std::collections::{BTreeMap, BTreeSet};
-use std::io::{IsTerminal, Write};
+use std::io::Write;
+use std::path::{Component, Path, PathBuf};
 
-use anyhow::{anyhow, bail, Result};
-use clap::Parser;
-
-fn main() -> Result<()> {
-    let cli = Cli::parse();
-    let mode = cli.mode()?;
-    let metadata = cli.metadata()?;
-    let version = cli.version()?;
-    let source = cli.source();
-    let filter_fn: Vec<String> = cli
-        .filter_fn
-        .iter()
-        .map(|s| s.trim().to_string())
-        .filter(|s| !s.is_empty())
-        .collect();
-
-    let raw_forc_output = std::fs::read_to_string(&cli.input_path)
-        .map_err(|e| anyhow!("failed to read {}: {e}", cli.input_path))?;
-    let cleaned_forc_output = strip_ansi(&raw_forc_output);
-
-    let irs = parse(&cleaned_forc_output);
-    if irs.is_empty() {
-        bail!("no `// IR:` dumps found in {}", cli.input_path);
-    }
-
-    if source && !has_metadata_defs(&cleaned_forc_output) {
-        eprintln!(
-            "warning: `--print source` was requested but the input contains no metadata \
-             definitions (`!N = ...`).\n  \
-             Regenerate the IR dump with the `print-md` flag, e.g. \
-             `forc build --ir all print-md`, so the span/file metadata is emitted."
-        );
-    }
-
-    let stdout = std::io::stdout();
-    let is_terminal = stdout.is_terminal();
-    let mut out = stdout.lock();
-
-    // Diff baseline: the rendered text of the previous printed dump. Reset to
-    // `None` at the start of every compilation unit.
-    let mut previous_ir: Option<String> = None;
-
-    for ir in &irs {
-        // A new compilation unit starts here; reset the diff baseline.
-        if ir.is_initial() {
-            previous_ir = None;
-        }
-
-        let Some(final_ir) = prepare_ir_text(&filter_fn, metadata, version, ir) else {
-            continue;
-        };
-
-        // The source map is parsed from the raw body (which always contains
-        // the `!N = ...` definitions), independent of metadata/version
-        // stripping applied to `final_ir`.
-        let mut source_map = if source {
-            Some(parse_source_map(&ir.body))
-        } else {
-            None
-        };
-
-        writeln!(out, "// IR: {}", ir.pass_name)?;
-
-        if mode == PrintMode::Diff {
-            if let Some(prev_text) = previous_ir.as_ref() {
-                let changeset = prettydiff::diff_lines(prev_text, &final_ir);
-                let ops = changeset.diff();
-                let (adds, removes) = diff_stats(&ops);
-                if adds == 0 && removes == 0 {
-                    print_diff_stats(&mut out, adds, removes)?;
-                } else {
-                    let cur_stats = FuncStats::compute_stats(&final_ir);
-                    let prev_stats = previous_ir.as_ref().map(|p| FuncStats::compute_stats(p));
-                    cur_stats.print_fn_stats(&mut out, prev_stats.as_ref())?;
-                    print_diff_stats(&mut out, adds, removes)?;
-                    print_diff(&mut out, &ops, is_terminal)?;
-                }
-            } else {
-                let cur_stats = FuncStats::compute_stats(&final_ir);
-                cur_stats.print_fn_stats(&mut out, None)?;
-                print_final_ir(&mut out, &final_ir, source_map.as_mut())?;
-            }
-        } else {
-            let cur_stats = FuncStats::compute_stats(&final_ir);
-            cur_stats.print_fn_stats(&mut out, None)?;
-            print_final_ir(&mut out, &final_ir, source_map.as_mut())?;
-        }
-
-        previous_ir = Some(final_ir);
-    }
-
-    Ok(())
+#[derive(Debug, Default, PartialEq, Eq, Clone, Copy)]
+pub(crate) enum PrintMode {
+    #[default]
+    Ir,
+    Diff,
 }
 
-fn prepare_ir_text(
+#[derive(Debug, Default, PartialEq, Eq, Clone, Copy)]
+pub(crate) enum MdMode {
+    #[default]
+    AsParsed,
+    With,
+    Without,
+}
+
+#[derive(Debug, Default, PartialEq, Eq, Clone, Copy)]
+pub(crate) enum VersionMode {
+    #[default]
+    AsParsed,
+    With,
+    Without,
+}
+
+pub(crate) fn prepare_ir_text(
     filter_fn: &[String],
     metadata: MdMode,
     version: VersionMode,
@@ -141,135 +57,8 @@ fn prepare_ir_text(
     }
 }
 
-#[derive(Debug, Default, PartialEq, Eq, Clone, Copy)]
-enum PrintMode {
-    #[default]
-    Ir,
-    Diff,
-}
 
-#[derive(Debug, Default, PartialEq, Eq, Clone, Copy)]
-enum MdMode {
-    #[default]
-    AsParsed,
-    With,
-    Without,
-}
-
-#[derive(Debug, Default, PartialEq, Eq, Clone, Copy)]
-enum VersionMode {
-    #[default]
-    AsParsed,
-    With,
-    Without,
-}
-
-/// Reads the output of `forc build --ir all` and prints diffs, stats and other helpful information.
-#[derive(Debug, Parser)]
-struct Cli {
-    /// Path to the input file (output of `forc build --ir all`).
-    input_path: String,
-
-    /// Filter in functions whose name contains one of the given substrings (comma separated).
-    #[arg(long, value_delimiter = ',')]
-    filter_fn: Vec<String>,
-
-    /// Comma separated list of items to print.
-    #[arg(long, value_delimiter = ',')]
-    print: Vec<PrintItem>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, clap::ValueEnum)]
-enum PrintItem {
-    Ir,
-    Diff,
-    WithMd,
-    WithoutMd,
-    WithVersion,
-    WithoutVersion,
-    /// Print the original source code on top of each IR line that has metadata.
-    Source,
-}
-
-impl Cli {
-    fn mode(&self) -> Result<PrintMode> {
-        let mut explicit = None::<PrintMode>;
-        for item in &self.print {
-            match item {
-                PrintItem::Ir => {
-                    if explicit == Some(PrintMode::Diff) {
-                        bail!("--print items 'ir' and 'diff' are mutually exclusive");
-                    }
-                    explicit = Some(PrintMode::Ir);
-                }
-                PrintItem::Diff => {
-                    if explicit == Some(PrintMode::Ir) {
-                        bail!("--print items 'ir' and 'diff' are mutually exclusive");
-                    }
-                    explicit = Some(PrintMode::Diff);
-                }
-                _ => {}
-            }
-        }
-        Ok(explicit.unwrap_or_default())
-    }
-
-    fn metadata(&self) -> Result<MdMode> {
-        let mut metadata = MdMode::default();
-        for item in &self.print {
-            match item {
-                PrintItem::WithMd => {
-                    if metadata == MdMode::Without {
-                        bail!("--print items 'with-md' and 'without-md' are mutually exclusive");
-                    }
-                    metadata = MdMode::With;
-                }
-                PrintItem::WithoutMd => {
-                    if metadata == MdMode::With {
-                        bail!("--print items 'with-md' and 'without-md' are mutually exclusive");
-                    }
-                    metadata = MdMode::Without;
-                }
-                _ => {}
-            }
-        }
-        Ok(metadata)
-    }
-
-    fn version(&self) -> Result<VersionMode> {
-        let mut version = VersionMode::default();
-        for item in &self.print {
-            match item {
-                PrintItem::WithVersion => {
-                    if version == VersionMode::Without {
-                        bail!(
-                            "--print items 'with-version' and 'without-version' are mutually exclusive"
-                        );
-                    }
-                    version = VersionMode::With;
-                }
-                PrintItem::WithoutVersion => {
-                    if version == VersionMode::With {
-                        bail!(
-                            "--print items 'with-version' and 'without-version' are mutually exclusive"
-                        );
-                    }
-                    version = VersionMode::Without;
-                }
-                _ => {}
-            }
-        }
-        Ok(version)
-    }
-
-    fn source(&self) -> bool {
-        self.print
-            .iter()
-            .any(|item| matches!(item, PrintItem::Source))
-    }
-}
-
-fn strip_metadata_and_version(body: &str, metadata: MdMode, version: VersionMode) -> String {
+pub(crate) fn strip_metadata_and_version(body: &str, metadata: MdMode, version: VersionMode) -> String {
     let mut s = body.to_string();
     if version == VersionMode::Without {
         s = strip_version_suffix(&s);
@@ -280,73 +69,85 @@ fn strip_metadata_and_version(body: &str, metadata: MdMode, version: VersionMode
     s.trim_end().to_string()
 }
 
-struct ParsedIr {
-    pass_name: String,
-    body: String,
+pub(crate) struct ParsedIr {
+    /// Package / compilation unit label from the nearest preceding
+    /// `Compiling …` / `Building …` line (or `"(unknown)"`).
+    pub project: String,
+    pub pass_name: String,
+    pub body: String,
 }
 
 impl ParsedIr {
     /// The `// IR: Initial` header marks the start of a new compilation unit.
-    fn is_initial(&self) -> bool {
+    pub(crate) fn is_initial(&self) -> bool {
         self.pass_name == "Initial"
     }
 }
 
-fn parse(cleaned: &str) -> Vec<ParsedIr> {
+fn push_parsed(out: &mut Vec<ParsedIr>, project: String, pass_name: String, body: Vec<&str>) {
+    out.push(ParsedIr {
+        project,
+        pass_name,
+        body: body.join("\n"),
+    });
+}
+
+pub(crate) fn parse(cleaned: &str) -> Vec<ParsedIr> {
     let mut parsed_irs = Vec::new();
-    let mut current: Option<(String, Vec<&str>)> = None;
+    // (project, pass_name, body lines)
+    let mut current: Option<(String, String, Vec<&str>)> = None;
+    let mut current_project = String::from("(unknown)");
 
     for line in cleaned.lines() {
+        let trimmed = line.trim_start();
+
+        // Track package boundaries even between dumps (when `current` is None).
+        if let Some(rest) = trimmed
+            .strip_prefix("Compiling ")
+            .or_else(|| trimmed.strip_prefix("Building "))
+        {
+            current_project = rest.trim().to_string();
+            if let Some((project, name, body)) = current.take() {
+                push_parsed(&mut parsed_irs, project, name, body);
+            }
+            continue;
+        }
+
         // The `// IR:` header may be indented (some dumps pad every line with
         // leading whitespace), so match against the trimmed-start line rather
         // than requiring the line to begin exactly with `// IR: `.  The body
         // lines below are still pushed verbatim, preserving their indentation.
-        if let Some(rest) = line.trim_start().strip_prefix("// IR: ") {
-            if let Some((name, body)) = current.take() {
-                parsed_irs.push(ParsedIr {
-                    pass_name: name,
-                    body: body.join("\n"),
-                });
+        if let Some(rest) = trimmed.strip_prefix("// IR: ") {
+            if let Some((project, name, body)) = current.take() {
+                push_parsed(&mut parsed_irs, project, name, body);
             }
-            current = Some((rest.trim().to_string(), Vec::new()));
+            current = Some((
+                current_project.clone(),
+                rest.trim().to_string(),
+                Vec::new(),
+            ));
             continue;
         }
 
-        let Some((_, body)) = current.as_mut() else {
-            continue;
-        };
-
-        let trimmed = line.trim_start();
-        if trimmed.starts_with("Compiling ") || trimmed.starts_with("Building ") {
-            // A new compilation unit is about to start
-            if let Some((name, body)) = current.take() {
-                parsed_irs.push(ParsedIr {
-                    pass_name: name,
-                    body: body.join("\n"),
-                });
-            }
-        } else {
+        if let Some((_, _, body)) = current.as_mut() {
             body.push(line);
         }
     }
 
-    if let Some((name, body)) = current {
-        parsed_irs.push(ParsedIr {
-            pass_name: name,
-            body: body.join("\n"),
-        });
+    if let Some((project, name, body)) = current {
+        push_parsed(&mut parsed_irs, project, name, body);
     }
 
     parsed_irs
 }
 
-struct FuncDecl {
-    name: String,
-    start: usize,
-    end: usize,
+pub(crate) struct FuncDecl {
+    pub name: String,
+    pub start: usize,
+    pub end: usize,
 }
 
-fn find_functions(body: &str) -> Vec<FuncDecl> {
+pub(crate) fn find_functions(body: &str) -> Vec<FuncDecl> {
     let lines: Vec<&str> = body.lines().collect();
     let mut decls = Vec::new();
 
@@ -376,7 +177,7 @@ fn find_functions(body: &str) -> Vec<FuncDecl> {
 }
 
 /// If `line` is a function declaration, return the declared function name.
-fn function_decl_name(line: &str) -> Option<String> {
+pub(crate) fn function_decl_name(line: &str) -> Option<String> {
     let mut rest = line.trim_start();
 
     loop {
@@ -410,16 +211,17 @@ fn is_id_byte(b: u8) -> bool {
     b.is_ascii_alphanumeric() || b == b'_'
 }
 
-#[derive(Default)]
-struct FuncStats {
-    args: usize,
-    blocks: usize,
-    instructions: usize,
-    ops: BTreeMap<String, usize>,
+#[derive(Default, Clone)]
+pub(crate) struct FuncStats {
+    pub args: usize,
+    pub locals: usize,
+    pub blocks: usize,
+    pub instructions: usize,
+    pub ops: BTreeMap<String, usize>,
 }
 
 impl FuncStats {
-    fn compute_stats(text: &str) -> FuncStats {
+    pub(crate) fn compute_stats(text: &str) -> FuncStats {
         let lines: Vec<&str> = text.lines().collect();
         let mut stats = FuncStats::default();
         for decl in find_functions(text) {
@@ -436,7 +238,11 @@ impl FuncStats {
                     }
                     continue;
                 }
-                if t == "}" || t.starts_with("local ") {
+                if t == "}" {
+                    continue;
+                }
+                if t.starts_with("local ") {
+                    stats.locals += 1;
                     continue;
                 }
                 if t.ends_with(':') {
@@ -514,7 +320,7 @@ impl FuncStats {
         }
     }
 
-    fn print_fn_stats<W: Write>(
+    pub(crate) fn print_fn_stats<W: Write>(
         self,
         out: &mut W,
         prev: Option<&FuncStats>,
@@ -523,6 +329,10 @@ impl FuncStats {
         line.push_str(&format!(
             " args={}",
             Self::stat_with_delta(self.args, prev.map(|p| p.args))
+        ));
+        line.push_str(&format!(
+            " locals={}",
+            Self::stat_with_delta(self.locals, prev.map(|p| p.locals))
         ));
         line.push_str(&format!(
             " blocks={}",
@@ -551,7 +361,7 @@ impl FuncStats {
     }
 }
 
-fn strip_version_suffix(input: &str) -> String {
+pub(crate) fn strip_version_suffix(input: &str) -> String {
     let bytes = input.as_bytes();
     let mut out = String::with_capacity(input.len());
     let mut copy_from = 0usize;
@@ -588,7 +398,7 @@ fn strip_version_suffix(input: &str) -> String {
     out
 }
 
-fn strip_metadata(input: &str) -> String {
+pub(crate) fn strip_metadata(input: &str) -> String {
     let mut out = String::with_capacity(input.len());
 
     for line in input.lines() {
@@ -605,7 +415,7 @@ fn strip_metadata(input: &str) -> String {
     out.trim_end_matches('\n').to_string()
 }
 
-fn is_metadata_def_line(line: &str) -> bool {
+pub(crate) fn is_metadata_def_line(line: &str) -> bool {
     let bytes = line.as_bytes();
     let mut i = 0;
     if bytes.first() != Some(&b'!') {
@@ -661,7 +471,7 @@ fn strip_inline_metadata(line: &str) -> String {
     out
 }
 
-fn print_diff<W: Write>(
+pub(crate) fn print_diff<W: Write>(
     out: &mut W,
     ops: &[prettydiff::basic::DiffOp<&str>],
     color: bool,
@@ -696,7 +506,7 @@ fn print_diff<W: Write>(
     Ok(())
 }
 
-fn diff_stats(ops: &[prettydiff::basic::DiffOp<&str>]) -> (usize, usize) {
+pub(crate) fn diff_stats(ops: &[prettydiff::basic::DiffOp<&str>]) -> (usize, usize) {
     let mut adds = 0;
     let mut removes = 0;
     for op in ops {
@@ -713,11 +523,52 @@ fn diff_stats(ops: &[prettydiff::basic::DiffOp<&str>]) -> (usize, usize) {
     (adds, removes)
 }
 
-fn print_diff_stats<W: Write>(out: &mut W, adds: usize, removes: usize) -> std::io::Result<()> {
+pub(crate) fn print_diff_stats<W: Write>(out: &mut W, adds: usize, removes: usize) -> std::io::Result<()> {
     writeln!(out, "// Diff Stats: adds={adds} removes={removes}")
 }
 
-fn strip_ansi(input: &str) -> String {
+/// Spawn `cmd` under a shell with stdout piped (stderr merged via `2>&1`).
+///
+/// The caller owns the [`std::process::Child`] and can kill it (e.g. on Ctrl-C).
+pub(crate) fn spawn_shell(cmd: &str) -> anyhow::Result<std::process::Child> {
+    use std::process::{Command, Stdio};
+
+    Command::new("bash")
+        .arg("-lc")
+        .arg(format!("{{ {cmd}\n}} 2>&1"))
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()
+        .map_err(|e| anyhow::anyhow!("failed to spawn shell for `--cmd`: {e}"))
+}
+
+/// Spawn `cmd` under a shell and capture merged stdout + stderr.
+///
+/// Used for `--cmd` in classic mode. Stderr is redirected into stdout by the
+/// shell (`2>&1`) so both streams are captured in order as a single pipe.
+pub(crate) fn capture_shell(cmd: &str) -> anyhow::Result<String> {
+    use std::io::Read;
+
+    let mut child = spawn_shell(cmd)?;
+    let mut text = String::new();
+    if let Some(mut stdout) = child.stdout.take() {
+        stdout
+            .read_to_string(&mut text)
+            .map_err(|e| anyhow::anyhow!("failed to read `--cmd` output: {e}"))?;
+    }
+    let status = child
+        .wait()
+        .map_err(|e| anyhow::anyhow!("failed to wait for `--cmd`: {e}"))?;
+
+    if text.trim().is_empty() && !status.success() {
+        let code = status.code().unwrap_or(-1);
+        anyhow::bail!("`--cmd` exited with status {code} and produced no output");
+    }
+
+    Ok(text)
+}
+
+pub(crate) fn strip_ansi(input: &str) -> String {
     let bytes = input.as_bytes();
     let mut out: Vec<u8> = Vec::with_capacity(bytes.len());
     let mut copy_from = 0usize;
@@ -768,7 +619,7 @@ fn strip_ansi(input: &str) -> String {
 
 /// Prints the final IR text, optionally prefixing each line that carries
 /// metadata with the original source code it refers to (see `--print source`).
-fn print_final_ir<W: Write>(
+pub(crate) fn print_final_ir<W: Write>(
     out: &mut W,
     text: &str,
     source_map: Option<&mut SourceMap>,
@@ -798,16 +649,89 @@ fn print_final_ir<W: Write>(
 
 /// Parsed metadata definitions from a single IR dump, used to resolve inline
 /// `!N` references on IR lines back to the source spans they point at.
-struct SourceMap {
+pub(crate) struct SourceMap {
     entries: BTreeMap<u64, MdValue>,
     /// Metadata file index -> resolved source contents (or `None` if the file
     /// could not be read).  Keyed by index so each file/inline blob is read at
     /// most once, regardless of how many spans reference it.
     content_cache: BTreeMap<u64, Option<String>>,
+    /// Extra directories to search when a `SourceId` path is missing on disk
+    /// (e.g. the dump was produced on another machine).
+    source_roots: Vec<PathBuf>,
+    /// Absolute/original paths that could not be resolved even with roots.
+    missing_paths: BTreeSet<String>,
+    /// True if at least one `SourceId` file was successfully read from disk.
+    resolved_files: usize,
+}
+
+impl SourceMap {
+    pub(crate) fn empty() -> Self {
+        Self {
+            entries: BTreeMap::new(),
+            content_cache: BTreeMap::new(),
+            source_roots: Vec::new(),
+            missing_paths: BTreeSet::new(),
+            resolved_files: 0,
+        }
+    }
+
+    /// Merge every `!N = …` definition from `body` into this map.
+    /// Existing indices are kept (first wins) so earlier dumps win over later
+    /// reprints of the same index.
+    pub(crate) fn merge_from_text(&mut self, body: &str) {
+        for line in body.lines() {
+            if let Some((idx, value)) = parse_metadata_def(line) {
+                self.entries.entry(idx).or_insert(value);
+            }
+        }
+        // New defs may point at different files; drop stale lookups.
+        self.content_cache.clear();
+        self.missing_paths.clear();
+        self.resolved_files = 0;
+    }
+
+    /// Clone the metadata table for a fresh lookup (empty content cache).
+    pub(crate) fn clone_for_lookup(&self) -> Self {
+        Self {
+            entries: self.entries.clone(),
+            content_cache: BTreeMap::new(),
+            source_roots: self.source_roots.clone(),
+            missing_paths: BTreeSet::new(),
+            resolved_files: 0,
+        }
+    }
+
+    pub(crate) fn entry_count(&self) -> usize {
+        self.entries.len()
+    }
+
+    /// Directories searched when a metadata file path is not found as-is.
+    pub(crate) fn set_source_roots(&mut self, roots: impl IntoIterator<Item = PathBuf>) {
+        self.source_roots = roots.into_iter().collect();
+        // Invalidate disk lookups so new roots take effect.
+        self.content_cache.clear();
+        self.missing_paths.clear();
+        self.resolved_files = 0;
+    }
+
+    pub(crate) fn missing_paths(&self) -> &BTreeSet<String> {
+        &self.missing_paths
+    }
+
+    pub(crate) fn resolved_files(&self) -> usize {
+        self.resolved_files
+    }
+
+    /// Whether this dump references any on-disk source files (vs only inline).
+    pub(crate) fn has_source_ids(&self) -> bool {
+        self.entries
+            .values()
+            .any(|v| matches!(v, MdValue::SourceId(_)))
+    }
 }
 
 #[derive(Debug, Clone)]
-enum MdValue {
+pub(crate) enum MdValue {
     /// `!N = "/path/to/file.sw"` — a source file location.
     SourceId(String),
     /// `!N = inline "<code>"` — the source text inlined directly (emitted by
@@ -825,22 +749,15 @@ enum MdValue {
     Other,
 }
 
-fn parse_source_map(body: &str) -> SourceMap {
-    let mut entries = BTreeMap::new();
-    for line in body.lines() {
-        if let Some((idx, value)) = parse_metadata_def(line) {
-            entries.insert(idx, value);
-        }
-    }
-    SourceMap {
-        entries,
-        content_cache: BTreeMap::new(),
-    }
+pub(crate) fn parse_source_map(body: &str) -> SourceMap {
+    let mut sm = SourceMap::empty();
+    sm.merge_from_text(body);
+    sm
 }
 
 /// Whether the input contains any `!N = ...` metadata definition lines.
 /// Without them, `--print source` cannot resolve inline `!N` references.
-fn has_metadata_defs(cleaned: &str) -> bool {
+pub(crate) fn has_metadata_defs(cleaned: &str) -> bool {
     cleaned.lines().any(is_metadata_def_line)
 }
 
@@ -1007,18 +924,69 @@ impl SourceMap {
     }
 
     /// Resolve the source content for a metadata file index, caching the
-    /// result.  For `SourceId` the file is read from disk; for `Inline` the
-    /// embedded text is used directly.  Returns `None` if unreadable.
+    /// result.  For `SourceId` the file is read from disk (trying `source_roots`
+    /// when the recorded path is missing); for `Inline` the embedded text is
+    /// used directly.  Returns `None` if unreadable.
     fn content_for_idx(&mut self, file_idx: u64) -> Option<&String> {
         if !self.content_cache.contains_key(&file_idx) {
-            let content = match self.entries.get(&file_idx) {
-                Some(MdValue::SourceId(path)) => std::fs::read_to_string(path).ok(),
-                Some(MdValue::Inline(code)) => Some(code.clone()),
+            let content = match self.entries.get(&file_idx).cloned() {
+                Some(MdValue::SourceId(path)) => match self.read_source_file(&path) {
+                    Some(text) => {
+                        self.resolved_files += 1;
+                        Some(text)
+                    }
+                    None => {
+                        self.missing_paths.insert(path);
+                        None
+                    }
+                },
+                Some(MdValue::Inline(code)) => Some(code),
                 _ => None,
             };
             self.content_cache.insert(file_idx, content);
         }
         self.content_cache.get(&file_idx).and_then(|c| c.as_ref())
+    }
+
+    /// Try the recorded path, then each configured source root.
+    fn read_source_file(&self, path: &str) -> Option<String> {
+        let p = Path::new(path);
+        if let Ok(text) = std::fs::read_to_string(p) {
+            return Some(text);
+        }
+        for root in &self.source_roots {
+            if !root.is_dir() {
+                continue;
+            }
+            // root + full path (absolute paths are joined carefully below)
+            if p.is_relative() {
+                if let Ok(text) = std::fs::read_to_string(root.join(p)) {
+                    return Some(text);
+                }
+            }
+            // Strip leading components until a suffix exists under root
+            // (handles CI absolute paths like `/home/runner/.../src/foo.sw`).
+            let normals: Vec<_> = p
+                .components()
+                .filter(|c| matches!(c, Component::Normal(_)))
+                .collect();
+            for start in 0..normals.len() {
+                let rel: PathBuf = normals[start..].iter().collect();
+                let candidate = root.join(&rel);
+                if let Ok(text) = std::fs::read_to_string(&candidate) {
+                    return Some(text);
+                }
+            }
+            // Last resort: walk the root for a matching file name.
+            if let Some(name) = p.file_name() {
+                if let Some(found) = find_named_under(root, name) {
+                    if let Ok(text) = std::fs::read_to_string(&found) {
+                        return Some(text);
+                    }
+                }
+            }
+        }
+        None
     }
 
     /// A human-readable label for the source of a span, used in the `// src:`
@@ -1081,11 +1049,24 @@ impl SourceMap {
     }
 }
 
+/// Depth-first search under `root` for a file whose name equals `name`.
+/// Caps the walk so a bad root cannot hang the UI.
+fn find_named_under(root: &Path, name: &std::ffi::OsStr) -> Option<PathBuf> {
+    walkdir::WalkDir::new(root)
+        .follow_links(false)
+        .max_depth(16)
+        .into_iter()
+        .filter_map(|e| e.ok())
+        .filter(|e| e.file_type().is_file())
+        .find(|e| e.file_name() == name)
+        .map(|e| e.into_path())
+}
+
 /// Expand a `[start, end)` byte range to whole-line boundaries of `content`,
 /// returning the full source line(s) that intersect the span (trailing newline
 /// excluded).  This gives readable context around a span that may otherwise be
 /// just a few tokens (e.g. an inline-asm mnemonic).
-fn expand_to_lines(content: &str, start: usize, end: usize) -> Option<&str> {
+pub(crate) fn expand_to_lines(content: &str, start: usize, end: usize) -> Option<&str> {
     if end < start || start > content.len() || end > content.len() {
         return None;
     }
@@ -1104,7 +1085,7 @@ fn expand_to_lines(content: &str, start: usize, end: usize) -> Option<&str> {
 }
 
 /// Find all inline `!N` metadata references in a line.
-fn find_md_refs(line: &str) -> Vec<u64> {
+pub(crate) fn find_md_refs(line: &str) -> Vec<u64> {
     let bytes = line.as_bytes();
     let mut refs = Vec::new();
     let mut i = 0;
@@ -1126,4 +1107,66 @@ fn find_md_refs(line: &str) -> Vec<u64> {
         }
     }
     refs
+}
+
+
+
+#[cfg(test)]
+mod strip_tests {
+    use super::*;
+    use std::path::PathBuf;
+
+    #[test]
+    fn strip_version_suffix_basic() {
+        assert_eq!(strip_version_suffix("v0v1"), "v0");
+        assert_eq!(strip_version_suffix("foo_v0v1"), "foo_v0v1");
+        assert_eq!(strip_version_suffix("a v10v20 b"), "a v10 b");
+    }
+
+    #[test]
+    fn strip_version_suffix_unicode() {
+        assert_eq!(strip_version_suffix("→ v0v1"), "→ v0");
+        let _ = strip_version_suffix("日本語 v12v3");
+        let _ = strip_version_suffix("●v1v2");
+    }
+
+    #[test]
+    fn strip_version_on_repo_ir_files_does_not_panic() {
+        let roots = [
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests"),
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../test/src/ir_generation/tests"),
+        ];
+        let mut n = 0usize;
+        for root in roots {
+            if !root.exists() {
+                continue;
+            }
+            for entry in walkdir(&root) {
+                let Ok(text) = std::fs::read_to_string(&entry) else { continue };
+                let _ = strip_version_suffix(&text);
+                let _ = strip_metadata(&text);
+                let _ = strip_metadata_and_version(&text, MdMode::Without, VersionMode::Without);
+                n += 1;
+            }
+        }
+        // Sample IR fixtures are optional depending on checkout layout.
+        let _ = n;
+    }
+
+    fn walkdir(root: &std::path::Path) -> Vec<PathBuf> {
+        let mut out = Vec::new();
+        let mut stack = vec![root.to_path_buf()];
+        while let Some(dir) = stack.pop() {
+            let Ok(rd) = std::fs::read_dir(&dir) else { continue };
+            for e in rd.flatten() {
+                let p = e.path();
+                if p.is_dir() {
+                    stack.push(p);
+                } else if p.extension().and_then(|s| s.to_str()) == Some("ir") {
+                    out.push(p);
+                }
+            }
+        }
+        out
+    }
 }

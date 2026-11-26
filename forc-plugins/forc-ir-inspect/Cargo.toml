@@ -1,0 +1,29 @@
+[package]
+name = "forc-ir-inspect"
+version.workspace = true
+description = "Dev-only forc plugin for browsing Sway IR dumps (not released)."
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[[bin]]
+name = "forc-ir-inspect"
+path = "src/main.rs"
+
+[dependencies]
+anyhow.workspace = true
+arboard.workspace = true
+clap = { workspace = true, features = ["derive"] }
+crossterm.workspace = true
+dirs.workspace = true
+prettydiff.workspace = true
+ratatui.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+walkdir.workspace = true
+
+[lints]
+workspace = true
