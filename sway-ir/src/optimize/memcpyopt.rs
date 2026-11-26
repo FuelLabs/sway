@@ -477,6 +477,15 @@ fn local_copy_prop(
         dest_to_copies: &FxIndexMap<Symbol, FxIndexSet<Value>>,
         replacements: &mut FxHashMap<Value, (Value, Replacement)>,
     ) -> bool {
+        // Untyped pointers may refer to a symbol through a cast, but they do not have
+        // a pointee size and therefore cannot participate in typed copy propagation.
+        if !src_val_ptr
+            .get_type(context)
+            .is_some_and(|ty| ty.is_typed_ptr(context))
+        {
+            return false;
+        }
+
         // For every `memcpy` that src_val_ptr is a destination of,
         // check if we can do the load from the source of that memcpy.
         if let Some(src_sym) = get_referred_symbol(context, src_val_ptr) {
