@@ -1,0 +1,8 @@
+[[package]]
+name = "generic_trait_bound_type_arguments"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-F1D729A4BC912A6D"
