@@ -209,6 +209,7 @@ TicTacToe
 DAO
 Timelock
 transpiler
+Namespaces
 namespacing
 unsafety
 prioritizations
