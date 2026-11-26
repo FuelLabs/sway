@@ -1,0 +1,23 @@
+category = "fail"
+
+# check: $()error
+# nextln: reference_in_contract_storage/src/main.sw:10:13
+# check: $()direct: &u64 = &0,
+# nextln: $()The type "&u64" is not allowed in storage.
+
+# check: $()error
+# nextln: reference_in_contract_storage/src/main.sw:11:13
+# check: $()nested: RefBox = RefBox { value: &0 },
+# nextln: $()The type "&u64" is not allowed in storage.
+
+# check: $()error
+# nextln: reference_in_contract_storage/src/main.sw:12:10
+# check: $()map: StorageMap<u64, RefBox> = StorageMap {},
+# nextln: $()The type "&u64" is not allowed in storage.
+
+# check: $()error
+# nextln: reference_in_contract_storage/src/main.sw:13:10
+# check: $()vec: StorageVec<RefBox> = StorageVec {},
+# nextln: $()The type "&u64" is not allowed in storage.
+
+# check: $()6 errors.
