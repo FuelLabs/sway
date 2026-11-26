@@ -2893,6 +2893,15 @@ impl ToDiagnostic for CompileError {
             },
             Parse { error } => {
                 match &error.kind {
+                    ParseErrorKind::StructInstantiationInMatch => Diagnostic {
+                        reason: Some(Reason::new(code(1), "Struct instantiation in match expression".to_string())),
+                        issue: Issue::error(source_engine, error.span.clone(), error.kind.to_string()),
+                        hints: vec![],
+                        help: vec![format!(
+                            "Wrap the struct instantiation in parentheses: `match ({}) {{ ... }}`.",
+                            error.span.as_str()
+                        )],
+                    },
                     ParseErrorKind::MissingColonInEnumTypeField { variant_name, tuple_contents } => Diagnostic {
                         reason: Some(Reason::new(code(1), "Enum variant declaration is not valid".to_string())),
                         issue: Issue::error(

@@ -743,6 +743,33 @@ fn parse_atom(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Expr> {
     }
     if let Some(match_token) = parser.take() {
         let condition = Box::new(parse_condition(parser)?);
+        // A struct initializer can be mistaken for the match arms. Probe fields
+        // without advancing the inner parser, so normal arms are only parsed once.
+        if matches!(&*condition, Expr::Path(_))
+            && parser.peek::<(Delimiter, Delimiter)>() == Some((Delimiter::Brace, Delimiter::Brace))
+        {
+            let (mut inner, span) = parser.enter_delimited(Delimiter::Brace).unwrap();
+            if let Ok((fields, _)) =
+                inner.try_parse_to_end::<Punctuated<ExprStructField, CommaToken>>(false)
+            {
+                // An empty match followed by an unrelated block is valid syntax.
+                if !fields.is_empty() {
+                    return Err(inner.emit_error_with_span(
+                        ParseErrorKind::StructInstantiationInMatch,
+                        Span::join(condition.span(), &span),
+                    ));
+                }
+            }
+            let (branches, _) = inner.parse_to_end()?;
+            return Ok(Expr::Match {
+                match_token,
+                value: condition,
+                branches: Braces {
+                    inner: branches,
+                    span,
+                },
+            });
+        }
         let branches = parser.parse()?;
         return Ok(Expr::Match {
             match_token,
